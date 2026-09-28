@@ -1,0 +1,35 @@
+{
+  "version": "0.1.0",
+  "supported_platform": "macOS",
+  "python": ">=3.11",
+  "qualification": {
+    "offline_tests": 15,
+    "frozen_regression_cases": [
+      45,
+      20
+    ],
+    "worker_tests_per_fixture": 8,
+    "live_packaged_run": false,
+    "codex_installation_test": false
+  },
+  "files_sha256": {
+    ".codex-plugin/plugin.json": "329d3f0250b628e6ec89310690570dbb7bbd8c348b3d6f6379020acde30635fa",
+    "LICENSE": "d126e5064308bd8a42c8cf95b4e5aa31b9af3a8fc0f5c019d88b408612db44d7",
+    "README.md": "60933a61f142adb65e807d30c488d99e7b9e660948fdabeac22019de4aaa658c",
+    "examples/task-batches/src/task_batches.py": "5a021e41f1b814e8ccf5a0eb35633bcaa7ecf597b060600b931c50ea6c218855",
+    "examples/task-batches/task.json": "d049484d49a79d3ea2f253277069a4633111505e302d42ea1af10cdb429b4c57",
+    "examples/task-batches/tests/test_task_batches_frozen.py": "fe6a7136331bba204729f64bcd2e0fb3bec663c1592c5c2d4e6b842831d20d93",
+    "scripts/compact_delivery_packet.py": "31c03aea7e478cf76b6ad907bfbb652d3989681ab13254e29368349813dcd090",
+    "scripts/guard_structured_flow.py": "4fa8cda045e08eb46464a6251b99afe56ddcb76806a7d7722f72e6f1ccfc6427",
+    "scripts/launch_template.py": "a3ae4ab3cdbc83750c46514edc34d0476d73d93a7562a7a63bad1b0e3eb34855",
+    "scripts/runtime.py": "0182c643128a30315522f639acf71f70375e7b76611ee4eb9ffb52a027bc9647",
+    "scripts/taskroute.py": "78e72b93d8414c517593f576c1f3bdcdb9f9368c9ed0e9aad31174cc73d4d7ae",
+    "scripts/verify_structured_flow.py": "8b1fdb195074cfe29a248a4c183d9c78c5927ad804eb0908f01747d40b708777",
+    "skills/taskroute/SKILL.md": "7c4b28148ec0b9520844a68fd79a5bcdc2a55a2736a6186b6eeada2cd725384d",
+    "tests/fixtures/batches.json": "92b2b84930a46d9c9db1242a236c2f243647d9ddcb1798cc38249003bf126602",
+    "tests/fixtures/receipts.json": "be98a20b4e734f61d9ae9d1cb8d8aa859dfdd8b8acee864d16ec8b382025ac0a",
+    "tests/test_compact_delivery_preflight.py": "a38e123e57fec6d80f6daa9fa23cbc10ef00cd449e022aebd77c7e61b9a56001",
+    "tests/test_packaged_flow.py": "01a93476e9706a0fc5aadb27536f2a47f61f05c309a93687af313c977f1bd004",
+    "tests/test_structured_flow_tools.py": "facb760a7e8a378d43153d70ba6991bacfe404268fd546be227a454aece118e1"
+  }
+}
