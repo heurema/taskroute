@@ -1,0 +1,10 @@
+minimum_pre_commit_version: '3.0.0'
+repos:
+  - repo: local
+    hooks:
+      - id: privacy
+        name: Scan staged objects for secrets and personal data
+        entry: python3 scripts/check_privacy.py
+        language: system
+        pass_filenames: false
+        always_run: true
