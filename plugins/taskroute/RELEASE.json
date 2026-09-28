@@ -1,35 +1,29 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "supported_platform": "macOS",
   "python": ">=3.11",
-  "qualification": {
-    "offline_tests": 15,
-    "frozen_regression_cases": [
-      45,
-      20
-    ],
-    "worker_tests_per_fixture": 8,
-    "live_packaged_run": false,
-    "codex_installation_test": false
-  },
+  "offline_tests": 18,
   "files_sha256": {
-    ".codex-plugin/plugin.json": "329d3f0250b628e6ec89310690570dbb7bbd8c348b3d6f6379020acde30635fa",
+    ".codex-plugin/plugin.json": "d1d46c4b85c5c2d556aa0d5653ce27351a3109e7899f75bfff28a3009bc2238a",
     "LICENSE": "d126e5064308bd8a42c8cf95b4e5aa31b9af3a8fc0f5c019d88b408612db44d7",
-    "README.md": "60933a61f142adb65e807d30c488d99e7b9e660948fdabeac22019de4aaa658c",
-    "examples/task-batches/src/task_batches.py": "5a021e41f1b814e8ccf5a0eb35633bcaa7ecf597b060600b931c50ea6c218855",
+    "README.md": "65f72756338ab636b9e92ec649c69923e30d535cc5ce4f3583099fe532c232c2",
+    "assets/flow.svg": "776c29e494d68fb2a4a3c9c390ed1dd1b469ea31eadf7a8e17544a938b358c14",
+    "examples/task-batches/src/task_batches.py": "e57bf244bad2a7c8a7360576366f79f235e78efa87be86f2568ce99020037b2e",
     "examples/task-batches/task.json": "d049484d49a79d3ea2f253277069a4633111505e302d42ea1af10cdb429b4c57",
-    "examples/task-batches/tests/test_task_batches_frozen.py": "fe6a7136331bba204729f64bcd2e0fb3bec663c1592c5c2d4e6b842831d20d93",
-    "scripts/compact_delivery_packet.py": "31c03aea7e478cf76b6ad907bfbb652d3989681ab13254e29368349813dcd090",
-    "scripts/guard_structured_flow.py": "4fa8cda045e08eb46464a6251b99afe56ddcb76806a7d7722f72e6f1ccfc6427",
-    "scripts/launch_template.py": "a3ae4ab3cdbc83750c46514edc34d0476d73d93a7562a7a63bad1b0e3eb34855",
-    "scripts/runtime.py": "0182c643128a30315522f639acf71f70375e7b76611ee4eb9ffb52a027bc9647",
-    "scripts/taskroute.py": "78e72b93d8414c517593f576c1f3bdcdb9f9368c9ed0e9aad31174cc73d4d7ae",
-    "scripts/verify_structured_flow.py": "8b1fdb195074cfe29a248a4c183d9c78c5927ad804eb0908f01747d40b708777",
+    "examples/task-batches/tests/test_task_batches_frozen.py": "303f2e2b9f6c443fec7b93fcb7309089ec56a397e16cbefb34feed2cae9bcd10",
+    "pyproject.toml": "04ea94ae56c93660d0c3f4e95beb9de5a991e1308a390a9b0af15b5d285e8f6d",
+    "scripts/compact_delivery_packet.py": "c1badbcf02a88f0dd87d2998184feb0ef9f19133ca5a721cfed94d641431392c",
+    "scripts/guard_structured_flow.py": "c8a7732ec15c442f1329b088f1a602eee00b3cf72bfcc2678d4323d4b5bb1c29",
+    "scripts/launch_template.py": "6db2869afad015fc95e07af8bd9fe875cd618245d8542b4806c427fc33f8f837",
+    "scripts/runtime.py": "4b0205faa68c02d82b45484d9664357eaaab84b9477d743e17d9d4739f507900",
+    "scripts/taskroute.py": "a3be6d552bf2e1921b0aca0a15ac73d8f6480ad3d9e2cbfc5ef4234f64c91100",
+    "scripts/verify_structured_flow.py": "8a9a03c35aa8bf59797b2a8fe2306759d8bf12466c4fbc8a394817b70938fc50",
     "skills/taskroute/SKILL.md": "7c4b28148ec0b9520844a68fd79a5bcdc2a55a2736a6186b6eeada2cd725384d",
     "tests/fixtures/batches.json": "92b2b84930a46d9c9db1242a236c2f243647d9ddcb1798cc38249003bf126602",
     "tests/fixtures/receipts.json": "be98a20b4e734f61d9ae9d1cb8d8aa859dfdd8b8acee864d16ec8b382025ac0a",
-    "tests/test_compact_delivery_preflight.py": "a38e123e57fec6d80f6daa9fa23cbc10ef00cd449e022aebd77c7e61b9a56001",
-    "tests/test_packaged_flow.py": "01a93476e9706a0fc5aadb27536f2a47f61f05c309a93687af313c977f1bd004",
-    "tests/test_structured_flow_tools.py": "facb760a7e8a378d43153d70ba6991bacfe404268fd546be227a454aece118e1"
+    "tests/test_compact_delivery_preflight.py": "92bafd56c469304fd406be9be9b8bf0cf7a20db1f3ebdd20ab0a2336e86f4606",
+    "tests/test_packaged_flow.py": "346ae55793f679e16227eb9c45bec3a568e0f5743292090db29a337dedac74eb",
+    "tests/test_safety_checks.py": "a939593dc14a8cc63edac73f392631a6ef92f8fe0327228a9a99ec3916d433ab",
+    "tests/test_structured_flow_tools.py": "30ecdef586635e0bac15b3e1de374d054fe050af3affd2793371aa5076498bcf"
   }
 }

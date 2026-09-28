@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="580" viewBox="0 0 1200 580" role="img" aria-labelledby="title desc">
+<title id="title">TaskRoute: delegate the work, keep the verdict</title>
+<desc id="desc">Codex defines a bounded task. Claude implements it and runs tests. A separate reviewer checks the result. Codex receives a diff, test evidence and the complete review to accept or block.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#81d9b4" stroke-width="1.8"/></marker></defs>
+<rect width="1200" height="580" rx="24" fill="#101d2a"/>
+<circle cx="1110" cy="30" r="230" fill="#172c39"/>
+<text x="58" y="64" fill="#81d9b4" font-family="Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="4">TASKROUTE</text>
+<text x="58" y="128" fill="#faf6ec" font-family="Arial, sans-serif" font-size="46" font-weight="700">Delegate the work.</text>
+<text x="58" y="182" fill="#faf6ec" font-family="Arial, sans-serif" font-size="46" font-weight="700">Keep the verdict.</text>
+<text x="60" y="220" fill="#acbcc8" font-family="Arial, sans-serif" font-size="19">A bounded Claude workflow. A result Codex can inspect.</text>
+<g font-family="Arial, sans-serif">
+<g fill="#1c3040" stroke="#355165"><rect x="58" y="272" width="238" height="144" rx="12"/><rect x="340" y="272" width="238" height="144" rx="12"/><rect x="622" y="272" width="238" height="144" rx="12"/><rect x="904" y="272" width="238" height="144" rx="12"/></g>
+<g fill="#81d9b4" font-size="13" font-weight="700" letter-spacing="2"><text x="80" y="302">01 / CODEX</text><text x="362" y="302">02 / CLAUDE</text><text x="644" y="302">03 / REVIEWER</text><text x="926" y="302">04 / CODEX</text></g>
+<g fill="#faf6ec" font-size="24" font-weight="700"><text x="80" y="342">Define the task</text><text x="362" y="342">Build + test</text><text x="644" y="342">Inspect the work</text><text x="926" y="342">Accept or block</text></g>
+<g fill="#acbcc8" font-size="15"><text x="80" y="375">Outcome, scope, checks</text><text x="362" y="375">One isolated workspace</text><text x="644" y="375">Separate, read-only agent</text><text x="926" y="375">Diff + tests + full review</text></g>
+<g stroke="#81d9b4" stroke-width="2" marker-end="url(#arrow)"><path d="M304 344H330"/><path d="M586 344H612"/><path d="M868 344H894"/></g>
+<line x1="58" y1="464" x2="1142" y2="464" stroke="#355165"/>
+<text x="58" y="506" fill="#faf6ec" font-size="17">Local evidence. Explicit limits. Source changes stay under your control.</text>
+<text x="58" y="542" fill="#91a9ba" font-size="14">0.1.x · macOS · Python functions · Claude Code · Codex plugin</text>
+</g></svg>

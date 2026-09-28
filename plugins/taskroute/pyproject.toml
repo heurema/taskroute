@@ -1,0 +1,15 @@
+[project]
+name = "taskroute-plugin"
+version = "0.1.1"
+description = "Bounded Claude delivery with compact Codex acceptance"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["E402"]

@@ -1,4 +1,4 @@
-# TaskRoute 0.1.0
+# TaskRoute 0.1.1
 
 A local Codex plugin for bounded Claude Code delivery: implement a Python function,
 run tests, get a separate read-only review, then return a compact evidence packet
@@ -80,16 +80,16 @@ run after an unknown submission; preserve its evidence instead.
 python3 -B -m unittest discover -s tests
 ```
 
-The suite replays two saved accepted artifacts through preparation, scope checks,
+Eighteen tests cover safety boundaries and replay two saved accepted artifacts through preparation, scope checks,
 worker-test verification and independent acceptance: 45 receipt cases and 20
 batch-planning cases, plus eight worker tests each. Transport/reviewer records in
 these replay tests are explicitly synthetic: passing proves packaging behavior,
 not a new live model evaluation. The two original live scenarios were accepted
-before extraction. The packaged CLI has not received a new live provider test or
-Codex installation test; those remain release limitations.
+before extraction. Installation and provider checks are separate from these offline tests; they
+require an already authenticated local environment.
 
 The implementation preserves reservations, no automatic retry, compact evidence,
 independent checks and bounded waiting from the qualified local workflow. Public
 fixtures contain code and tests, not private session logs. `RELEASE.json` records
-file digests. Future updates should run this suite and preserve the 0.1.0 release
+file digests. Future updates should run this suite and preserve previous releases
 for rollback. Token savings are workload-dependent and are not guaranteed.
