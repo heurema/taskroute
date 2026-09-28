@@ -10,6 +10,33 @@ complete review, then accepts the result or explains the blocker.
 
 TaskRoute packages that handoff as a small, local **Codex plugin**.
 
+## Install with Codex
+
+Copy this prompt into Codex **together with this repository's link or a local
+checkout path**. Codex performs the installation; you do not need to run commands.
+
+```text
+Install TaskRoute from the repository or local folder I am sharing.
+Read INSTALL.md first, then install the latest stable tagged release.
+Preserve my existing plugins and configuration. Verify the release file hashes,
+install through Codex's native plugin workflow, and run the installed offline tests.
+Report the exact version and whether I need a new chat to use the skill.
+If a prerequisite is missing, tell me which one. Do not run a live model task yet.
+```
+
+For a fixed version, replace “latest stable tagged release” with **`v0.1.1`**.
+The [Codex installation guide](INSTALL.md) contains the operational details.
+
+## Versions
+
+| Tag | What it fixes in place |
+|---|---|
+| **`v0.1.1`** | Verified local installation, real end-to-end run, stronger integrity checks, Ruff, 18 offline tests |
+| `v0.1.0` | Original packaged baseline and 15 offline tests |
+
+Tags identify frozen releases. `main` may contain newer documentation or work in
+progress. Updates are explicit; TaskRoute does not replace itself automatically.
+
 ## What comes back
 
 - **The change:** an isolated candidate and its exact diff.
