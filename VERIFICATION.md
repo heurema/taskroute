@@ -34,3 +34,18 @@ drift detection. No GitHub publication has occurred as part of this verification
 The README animation is a condensed replay of these observed stages, generated
 from the verified event outcomes. It is not a screen capture or a timing benchmark.
 Raw session logs stay local and are not included in this repository.
+
+## Earlier execution comparison
+
+In one new-task comparison, both routes passed the same 20 acceptance tests:
+
+| Codex workload | Direct implementation | TaskRoute |
+|---|---:|---:|
+| Input tokens excluding cache | 24,257 | 9,867 |
+| Output tokens | 2,817 | 467 |
+| Elapsed time | 99.6 s | 99.5 s |
+
+These are measurements of two clean execution sessions, not guaranteed savings.
+Shared experiment preparation is excluded from this table; it was material.
+Token counts do not establish subscription quota savings. This is a small sample,
+with visible tests and sequential runs, not a broad benchmark.

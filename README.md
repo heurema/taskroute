@@ -5,112 +5,57 @@
 **Let Claude handle a bounded coding task. Get back work Codex can verify.**
 
 You and Codex agree on the outcome. Claude implements it, runs the tests, and
-brings in a separate reviewer. Codex receives the actual diff, test evidence, and
-complete review, then accepts the result or explains the blocker.
+brings in a separate reviewer. Codex checks the result and returns a clear decision.
 
-TaskRoute packages that handoff as a small, local **Codex plugin**.
+TaskRoute is a local **Codex plugin** that keeps this handoff in one workflow.
 
-## Install with Codex
+## What you get
 
-Copy this prompt into Codex **together with this repository's link or a local
-checkout path**. Codex performs the installation; you do not need to run commands.
+- **Working code** in a separate copy of your project.
+- **Test results** checked against the agreed requirements.
+- **An independent review** with the findings included.
+- **A clear outcome:** accepted work or an explanation of what blocked it.
 
-```text
-Install TaskRoute from the repository or local folder I am sharing.
-Read INSTALL.md first, then install the latest stable tagged release.
-Preserve my existing plugins and configuration. Verify the release file hashes,
-install through Codex's native plugin workflow, and run the installed offline tests.
-Report the exact version and whether I need a new chat to use the skill.
-If a prerequisite is missing, tell me which one. Do not run a live model task yet.
-```
-
-For a fixed version, replace “latest stable tagged release” with **`v0.1.1`**.
-The [Codex installation guide](INSTALL.md) contains the operational details.
-
-## Versions
-
-| Tag | What it fixes in place |
-|---|---|
-| **`v0.1.1`** | Verified local installation, real end-to-end run, stronger integrity checks, Ruff, 18 offline tests |
-| `v0.1.0` | Original packaged baseline and 15 offline tests |
-
-Tags identify frozen releases. `main` may contain newer documentation or work in
-progress. Updates are explicit; TaskRoute does not replace itself automatically.
-
-## What comes back
-
-- **The change:** an isolated candidate and its exact diff.
-- **The checks:** worker tests plus a separate run of your frozen acceptance tests.
-- **The review:** a separate read-only Claude agent's findings, in full.
-- **The decision:** Codex's acceptance or a concrete blocker.
-
-A run has explicit limits. An uncertain submission is never automatically resent.
-Your original project is left intact; applying the accepted change stays a separate step.
+Your original files stay unchanged until you decide to apply the result.
 
 <details>
 <summary>See the flow in 13 seconds</summary>
 
-![A condensed replay of the verified TaskRoute run](media/taskroute-demo.gif)
+![A condensed replay of a verified TaskRoute run](media/taskroute-demo.gif)
 
-An event-based replay of the installed 0.1.1 check, with timing compressed.
-This is not a screen recording. [Verification details](VERIFICATION.md).
+A shortened replay of a real run's events, with timing compressed.
+This is not a screen recording. [What we verified](VERIFICATION.md).
 
 </details>
 
-## Why this exists
+## Install with Codex
 
-Delegation only helps if coordinating it costs less than doing the work yourself.
-TaskRoute keeps waiting out of repeated model turns and brings back one compact
-evidence packet instead of making Codex reconstruct the entire execution log.
+Send Codex this prompt **along with the repository link or your local folder**:
 
-In one new-task comparison, both routes passed the same 20 acceptance tests:
-
-| Codex workload | Direct implementation | TaskRoute |
-|---|---:|---:|
-| Input tokens excluding cache | 24,257 | 9,867 |
-| Output tokens | 2,817 | 467 |
-| Elapsed time | 99.6 s | 99.5 s |
-
-These are measurements of two clean execution sessions, not guaranteed savings.
-Shared experiment preparation is excluded from this table; it was material.
-Token counts do not establish subscription quota savings. This is a small sample,
-with visible tests and sequential runs, not a broad benchmark.
-
-## Try a small, real task
-
-After installing the plugin, ask Codex:
-
-> Use TaskRoute to implement this Python function. Agree on the behavior and
-> acceptance tests first, then delegate the implementation and review to Claude.
-> Return the diff, checks, and your decision.
-
-The included [dependency planner example](plugins/taskroute/examples/task-batches/task.json)
-provides a complete contract and frozen tests. The [usage guide](plugins/taskroute/README.md)
-explains local installation and the script interface.
-
-## Deliberately small
-
-**Current scope:** macOS, Python 3.11+, stdlib unittest projects, one existing
-function per task, and an already authenticated Claude Code installation.
-
-One coordinator. One separate reviewer. Up to three check attempts. A bounded
-600-second Claude run. No daemon or service to operate.
-
-TaskRoute does not yet support arbitrary full applications, automatic code
-application, or semantic drift detection during execution. The tool restrictions
-are useful boundaries, not a security sandbox for hostile code.
-
-## Built to inspect
-
-The runtime uses the Python standard library. Ruff checks style and common errors.
-Offline regression tests exercise both saved accepted scenarios, the full launch
-with a fake provider, replay prevention, and checks that survive Python optimization.
-
-```sh
-ruff check plugins/taskroute
-ruff format --check plugins/taskroute
-python3 -B -m unittest discover -s plugins/taskroute/tests
+```text
+Install TaskRoute from the repository or folder I am sharing.
+Follow INSTALL.md, preserve my existing setup, and verify the installation.
+Tell me when it is ready and whether I need to open a new chat.
+Do not run a live coding task yet.
 ```
 
-[How it works and how to use it](plugins/taskroute/README.md) ·
-[Plugin source](plugins/taskroute/scripts) · [MIT license](LICENSE)
+Codex handles the installation. You do not need to run terminal commands.
+
+## Give it a task
+
+Once installed, ask Codex:
+
+> Use TaskRoute to implement this Python function. Agree on the behavior and
+> tests first, then delegate the implementation and review to Claude.
+> Return the changes, checks, and your decision.
+
+The aim is to spend less Codex effort coordinating implementation and reviewing
+logs. Early examples show promising reductions in execution tokens; overall
+savings depend on the task and preparation. [See the measurements](VERIFICATION.md).
+
+**Start small:** the current release supports bounded Python function changes on
+macOS and requires an existing Claude Code setup. It is not yet a general-purpose
+workflow for building entire applications. [Supported scope and usage](plugins/taskroute/README.md).
+
+[Installation guide for Codex](INSTALL.md) · [What's changed](CHANGELOG.md) ·
+[Contributing](CONTRIBUTING.md) · [MIT license](LICENSE)
