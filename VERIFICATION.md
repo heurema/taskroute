@@ -1,3 +1,12 @@
+# Version 0.2.1 verification
+
+All 80 offline tests passed (11.894s), with the caller backlog overridden to a
+sentinel copy. The sentinel remained byte-identical; the actual user database
+retained the same 21 rows. Both integration suites now check that their intentional
+replay rejection is captured exactly once in a per-test temporary database.
+Ruff checks and formatting passed. No model calls or new live quality claims.
+Existing uncertain-provenance records are preserved, with a local database backup.
+
 # Version 0.2.0 verification
 
 The current minimal-lead route completed one fresh live scenario using the same

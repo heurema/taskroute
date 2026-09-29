@@ -3,6 +3,7 @@
 import contextlib
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -12,6 +13,7 @@ from unittest.mock import patch
 
 PLUGIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN / "scripts"))
+import backlog
 import compact_delivery_packet as collector
 import taskroute
 import verify_structured_flow as verifier
@@ -19,6 +21,12 @@ import verify_structured_flow as verifier
 
 @unittest.skipUnless(sys.platform == "darwin", "macOS sandbox required")
 class PackagedTests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.backlog_db = Path(temp.name) / "backlog.sqlite3"
+        self.enterContext(patch.dict(os.environ, TASKROUTE_BACKLOG_DB=str(self.backlog_db)))
+
     def replay(self, name):
         fixture = json.loads((PLUGIN / "tests/fixtures" / f"{name}.json").read_text())
         with tempfile.TemporaryDirectory() as temp:
@@ -183,6 +191,9 @@ class PackagedTests(unittest.TestCase):
             second = subprocess.run(args, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(second.returncode, 0)
             self.assertIn("LIVE_ATTEMPT_ALREADY_RESERVED", second.stdout)
+            rows = backlog.show(self.backlog_db, "runner.live_attempt_already_reserved")
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["run_id"], backlog.opaque(run))
 
     def test_complete_launcher_with_fake_provider(self):
         self.fake_provider_delivery()

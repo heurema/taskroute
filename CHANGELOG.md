@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — 2026-09-29
+
+- Isolate both fake-provider integration suites in per-test temporary backlog databases.
+- Assert that expected replay rejections reach the isolated database, including child
+  CLI processes. Preserve the caller's backlog configuration and existing records.
+- No delivery behavior change; existing uncertain-provenance records are not deleted.
+
 ## 0.2.0 — 2026-09-29
 
 Git tag: `v0.2.0`.

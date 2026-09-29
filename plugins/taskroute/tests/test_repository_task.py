@@ -3,6 +3,7 @@
 import contextlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,7 @@ from unittest.mock import patch
 PLUGIN = Path(__file__).resolve().parents[1]
 SCRIPTS = PLUGIN / "scripts"
 sys.path.insert(0, str(SCRIPTS))
+import backlog
 import compact_delivery_packet as collector
 import repository_task
 import taskroute
@@ -26,6 +28,8 @@ class RepositoryTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.base = Path(self.temp.name).resolve()
+        self.backlog_db = self.base / "backlog.sqlite3"
+        self.enterContext(patch.dict(os.environ, TASKROUTE_BACKLOG_DB=str(self.backlog_db)))
         self.project = self.base / "project"
         self.project.mkdir()
         self.originals = {
@@ -248,6 +252,9 @@ class RepositoryTests(unittest.TestCase):
         self.assertFalse((self.project / "note.txt").exists())
         replay = subprocess.run(args, capture_output=True, text=True, timeout=10)
         self.assertIn("LIVE_ATTEMPT_ALREADY_RESERVED", replay.stdout)
+        rows = backlog.show(self.backlog_db, "runner.live_attempt_already_reserved")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["run_id"], backlog.opaque(self.run))
 
     def test_blocked_and_changes_return_decision_packet(self):
         self.prepare()

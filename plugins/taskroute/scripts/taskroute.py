@@ -273,7 +273,7 @@ def prepare(
         json.dumps(
             {
                 "status": "PASS",
-                "version": "0.2.0",
+                "version": "0.2.1",
                 "meaning": "Local preparation only; no provider call or authority grant",
             }
         )
