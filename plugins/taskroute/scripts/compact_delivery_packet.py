@@ -59,6 +59,11 @@ def preflight(run):
             raise ValueError("CANONICAL_SOURCE_CHANGED")
     if not os.access(m["python"], os.X_OK):
         raise ValueError("PYTHON_NOT_EXECUTABLE")
+    if m.get("mode") == "repository":
+        from repository_task import check_tools, snapshot
+
+        check_tools(m)
+        snapshot(m, originals)
     scratch = run / "scratch"
     if scratch.is_symlink():
         raise ValueError("SCRATCH_SYMLINK")
@@ -114,6 +119,12 @@ def inspect(run):
     )
     if methods != m.get("worker_test_methods", 8) or checks["status"] != "PASS":
         raise ValueError("WORKER_CHECKS_NOT_ACCEPTABLE")
+    review, result = review_evidence(run, m)
+    return m, originals, source, tests, checks, review, result
+
+
+def review_evidence(run, m):
+    """Validate transport/review evidence, independent of the project language."""
     rows = [json.loads(line) for line in (run / "stdout.jsonl").read_text().splitlines()]
     results = [x for x in rows if x.get("type") == "result"]
     terminal = json.loads((run / "terminal.json").read_text())
@@ -128,7 +139,17 @@ def inspect(run):
     if m["model"] not in result.get("modelUsage", {}):
         raise ValueError("MODEL_IDENTITY_UNVERIFIED")
     children = result.get("subagent_stats", {})
-    if children.get("spawned") != 1 or children.get("completed") != 1:
+    expected_children = 1
+    if m.get("review_repair_enabled"):
+        from review_gate import rounds
+
+        expected_children = len(rounds(json.loads((run / "review-gate.json").read_text())))
+        if expected_children not in (1, 2):
+            raise ValueError("INVALID_REVIEW_ROUNDS")
+    if (
+        children.get("spawned") != expected_children
+        or children.get("completed") != expected_children
+    ):
         raise ValueError("REVIEWER_NOT_COMPLETED")
     review = "\n\n".join(
         b["text"]
@@ -140,14 +161,38 @@ def inspect(run):
     if not review.strip():
         raise ValueError("MISSING_REVIEW_TEXT")
     gates = [json.loads(line) for line in (run / "gate-events.jsonl").read_text().splitlines()]
-    index = next(i for i, e in enumerate(gates) if e["tool"] in ("Task", "Agent") and e["allowed"])
-    if any(e["allowed"] and e["tool"] in ("Edit", "Write") for e in gates[index + 1 :]):
-        raise ValueError("EDIT_AFTER_REVIEW_START")
-    return m, originals, source, tests, checks, review, result
+    starts = [i for i, e in enumerate(gates) if e["tool"] in ("Task", "Agent") and e["allowed"]]
+    if len(starts) != expected_children:
+        raise ValueError("REVIEW_LAUNCH_COUNT_MISMATCH")
+    for i, e in enumerate(gates):
+        if not (e["allowed"] and e["tool"] in ("Edit", "Write") and i > starts[0]):
+            continue
+        if not m.get("review_repair_enabled") or expected_children != 2:
+            raise ValueError("EDIT_AFTER_REVIEW_START")
+        groups = rounds(json.loads((run / "review-gate.json").read_text()))
+        if not (
+            groups[0][-1]["status"] == "CHANGES"
+            and e.get("time", 0) > groups[0][-1]["completed_at"]
+            and i < starts[1]
+            and not e.get("agent_id")
+        ):
+            raise ValueError("EDIT_OUTSIDE_REPAIR_WINDOW")
+    if m.get("review_gate_enabled"):
+        from review_gate import accepted_review
+
+        if (run / "review-gate-error.json").exists():
+            raise ValueError("REVIEW_GATE_ERROR")
+        review = accepted_review(run, m, review)
+    return review, result
 
 
 def collect(run):
     run = Path(run).resolve()
+    manifest = json.loads((run / "manifest.json").read_text())
+    if manifest.get("mode") == "repository":
+        from repository_task import collect as collect_repository
+
+        return collect_repository(run)
     m, originals, source, tests, checks, review, result = inspect(run)
     expected_tests = m.get("independent_test_count", 45)
     Journal(run).reserve(
@@ -204,6 +249,16 @@ def collect(run):
     return packet
 
 
+def lead_view(packet, run):
+    """Omit echoed task fields only; retain all review text, findings and checks."""
+    echoed = {"contract", "acceptance", "non_goals", "check_inputs"}
+    view = {key: value for key, value in packet.items() if key not in echoed}
+    view["task_source"] = str(Path(run) / "workspace" / "TASK.md")
+    view["full_packet"] = str(Path(run) / "acceptance-packet.json")
+    view["omitted_task_fields"] = sorted(echoed.intersection(packet))
+    return view
+
+
 def main():
     run = Path(sys.argv[1]).resolve()
     try:
@@ -218,10 +273,30 @@ def main():
             )
             if done.returncode:
                 raise ValueError("LAUNCH_FAILED_NO_RETRY")
-        print(json.dumps(collect(run), ensure_ascii=False))
+        packet = collect(run)
+        from backlog import capture
+
+        packet["backlog"] = capture(run, packet)
+        # Archive the exact complete packet, including backlog capture status.
+        (run / "acceptance-packet.json").write_text(
+            json.dumps(packet, ensure_ascii=False, indent=2)
+        )
+        output = lead_view(packet, run) if "--lead-view" in sys.argv else packet
+        if "--receipt-only" in sys.argv:
+            from delivery_receipt import receipt
+
+            output = receipt(packet, run)
+        print(json.dumps(output, ensure_ascii=False))
+        if output.get("status") == "BLOCKED":
+            return 2
+        if packet["status"] != "READY_FOR_LEAD_REVIEW":
+            return 2
     except Exception as exc:
         error = dict(status="BLOCKED", reason=str(exc), error_type=type(exc).__name__)
         (run / "packet-error.json").write_text(json.dumps(error, indent=2))
+        from backlog import capture
+
+        error["backlog"] = capture(run, error)
         print(json.dumps(error))
         return 2
     return 0

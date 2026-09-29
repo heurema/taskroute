@@ -1,83 +1,95 @@
-# Installation instructions for Codex
+# Installation and updates for Codex
 
-The human provides a repository URL or local checkout and asks you to install
-TaskRoute. Perform the installation yourself; do not hand back a list of terminal
-commands for the human to execute.
+Act on the user's install/update request; do not ask them to clone a repository or
+run commands. The canonical source is https://github.com/heurema/taskroute.
+The repository catalog is `.agents/plugins/marketplace.json`, named `taskroute`.
+The plugin identifier is `taskroute@taskroute`. Current release: **0.2.0**.
 
-## Select a fixed version
+## Prerequisites and authority
 
-1. Resolve the supplied source. If no URL or folder is available, ask only for
-   that source; never guess a repository owner or URL.
-2. Use the requested version. Otherwise choose the latest stable `vX.Y.Z` Git
-   tag available from that source. The current verified plugin is **v0.1.1**.
-   Work from a separate checkout or archive of the selected tag; preserve any
-   existing checkout and its uncommitted changes. Never install floating `main`
-   while reporting that a release was installed.
-3. The plugin is `plugins/taskroute/`. Confirm that its manifest version matches
-   the selected release and verify every entry in `RELEASE.json` against the
-   actual file contents before copying or installing it. Missing or mismatched
-   files block installation. An integrity manifest is not a publisher signature.
+Check macOS, Python 3.11+, `sandbox-exec`, Codex with native `plugin marketplace`
+commands, and an existing authenticated Claude Code installation. No Python runtime
+packages are required. Missing tools, login or account changes need separate
+permission; report the missing prerequisite without installing or authenticating.
+Plugin installation does not authorize a live model task.
 
-## Check prerequisites
+Inspect `codex plugin marketplace list --json` and `codex plugin list --json`
+first. Preserve unrelated sources and settings. If `taskroute` already resolves to
+a different repository, stop instead of replacing it. Record the previous version,
+source and revision before an update for rollback.
 
-Confirm macOS, Python 3.11+, `sandbox-exec`, and the local Codex and Claude Code
-CLIs. This release needs existing Claude authentication. Check existing access
-read-only when needed; do not start login, install missing tools, change billing,
-or issue credentials as part of plugin installation. Report the exact missing
-prerequisite if one is absent. There are no Python runtime packages to install.
+## Install without a user-managed checkout
 
-## Register and install locally
+Use the native Codex CLI (resolve the installed executable on this host):
 
-Use Codex's installed plugin-creation/installation tooling when available. The
-verified local route is a personal marketplace and native `codex plugin add`.
-Inspect existing entries first and preserve unrelated plugins and settings.
-
-- Place the selected plugin files under `~/plugins/taskroute`, or reuse that
-  directory only if it is already the matching managed TaskRoute source. Preserve
-  the previous managed version for rollback. Do not overwrite an unrelated folder.
-- The default personal marketplace file is
-  `~/.agents/plugins/marketplace.json`. For this default location, Codex resolves
-  `./plugins/taskroute` to `~/plugins/taskroute`, not beneath `.agents/plugins`.
-- Use the host's marketplace helper to add the `taskroute` entry. For hosts without
-  that helper, use the supported local marketplace configuration below. Merge the
-  entry into an existing marketplace rather than replacing its contents, and keep
-  its actual name. Stop if the same name already points at an unrelated source.
-
-A new personal marketplace has this shape:
-
-```json
-{
-  "name": "personal",
-  "interface": {"displayName": "Personal"},
-  "plugins": [{
-    "name": "taskroute",
-    "source": {"source": "local", "path": "./plugins/taskroute"},
-    "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
-    "category": "Productivity"
-  }]
-}
+```sh
+codex plugin marketplace add heurema/taskroute
+codex plugin add taskroute@taskroute
 ```
 
-Run `codex plugin add taskroute@personal`, substituting the existing marketplace
-name if different. The default personal marketplace is discovered automatically;
-there is no need to add another global marketplace source. For same-version local
-development updates, follow the host's cachebuster/reinstall procedure rather
-than silently editing the installed cache. Tagged releases are immutable.
+Codex downloads and manages the Git catalog and plugin cache. The repository's
+default branch is the update channel; this is a floating channel, not a tag pin.
+Inspect the fetched manifest and `RELEASE.json` before running package code. Verify
+all listed SHA-256 digests and the matching version. Digests are integrity checks,
+not a publisher signature. If the remote catalog is unavailable, report that
+publication is pending; do not silently substitute another source.
 
-## Verify before declaring success
+## Update
 
-- Inspect `codex plugin list --json`: TaskRoute must be installed, enabled, and
-  report the selected version and intended source.
-- Use the installed plugin path returned by the installer. Verify its release
-  file digests again. Do not test a source checkout and call that an installed test.
-- Run its offline suite with Python's unittest discovery from the installed
-  plugin root. No Ruff installation is required to use the plugin.
-- Report the version, tag/commit, installed path, checks, and any limitation.
-  Explain that a new Codex chat loads the installed skill.
-- A live example is a separate model-consuming action. Run one only if the human
-  also requests a live check; installation alone does not authorize it. Use the
-  installed skill, one coordinator and one reviewer, with no automatic resend.
+For an existing canonical floating catalog:
 
-To undo installation, use the native plugin removal command for the exact
-TaskRoute entry. Preserve unrelated configuration and user task results. To roll
-back a version, reinstall the previous fixed release through the same route.
+```sh
+codex plugin marketplace upgrade taskroute --json
+codex plugin add taskroute@taskroute
+```
+
+Refreshing the catalog and reinstalling the plugin are separate steps. Check both
+results and the installed version; a refreshed catalog alone is not an updated
+installation. Do not run an unscoped upgrade of every marketplace.
+
+Official documentation describes explicit refresh/reinstall. Automatic background
+updating of custom Git catalogs has not been verified. Do not add a daemon, cron job
+or heartbeat to simulate it. The user can ask Codex to update at any time.
+
+## Pinned installs and older personal installations
+
+For a fresh pinned catalog, run:
+
+```sh
+codex plugin marketplace add heurema/taskroute --ref v0.2.0
+codex plugin add taskroute@taskroute
+```
+
+A pin stays
+fixed; do not claim that refresh selects the latest release. To change an existing
+pin, inspect this CLI's marketplace removal/re-add help and preserve its previous
+source/ref; never silently change a pin to a floating channel.
+
+An older `taskroute@personal` installation is a different identifier. Install and
+verify the canonical replacement first, then remove only the old TaskRoute entry
+with the native plugin removal command as part of the requested migration. Preserve
+other personal plugins, source files, run directories and the local failure backlog.
+If the old copy has local changes, preserve it and report the conflict before removal.
+Do not edit the installed cache by hand.
+
+## Verify the installed copy
+
+- Inspect native plugin listing: expected source, enabled installation and version.
+  If the listing omits version, read the installed manifest; never infer it.
+- Resolve the installed path returned by Codex, verify `RELEASE.json` file hashes
+  there, and run `python3 -B -m unittest discover -s tests` from that plugin root.
+  Do not substitute tests of a development checkout.
+- Report installed version, source revision, checks and limitations. Open a new
+  Codex chat to load the new skill. No live task is part of these offline checks.
+
+Rollback: reinstall the recorded previous release through a pinned catalog using
+the native commands for this host. Preserve user data. Uninstall removes only the
+exact TaskRoute plugin entry, not task outputs or unrelated marketplace settings.
+
+## Native mechanism references
+
+- [Codex plugin packaging and repository catalogs](https://developers.openai.com/plugins/build/plugins)
+- [Codex CLI reference](https://developers.openai.com/codex/cli/reference)
+
+Verified documentation and installed CLI command help on 2026-09-29. A local
+catalog/package check does not prove installation from an unpublished remote revision.

@@ -19,6 +19,11 @@ def decide(event):
         return False, "Missing structured tool arguments"
     child = bool(event.get("agent_id"))
     if tool in ("Read", "Edit", "Write"):
+        writable = (
+            M["writable_paths"]
+            if M.get("mode") == "repository"
+            else [M["target"], M["test_target"]]
+        )
         value = args.get("file_path")
         if not isinstance(value, str):
             return False, "Missing path"
@@ -32,14 +37,11 @@ def decide(event):
         if tool == "Read":
             return (
                 resolved.is_file()
-                and relative in {*M["source_hashes"], M["test_target"], "TASK.md", "checks.json"}
+                and relative in {*M["source_hashes"], *writable, "TASK.md", "checks.json"}
             ), "Read declared evidence only"
         if child:
             return False, "Reviewer is read-only"
-        return relative in (
-            M["target"],
-            M["test_target"],
-        ), "Only candidate source and tests may change"
+        return relative in writable, "Only declared writable paths may change"
     if tool == "Bash":
         return (
             not child
@@ -47,6 +49,22 @@ def decide(event):
             and not args.get("run_in_background")
         ), "Only the exact sandboxed verifier is executable"
     if tool in ("Task", "Agent"):
+        if M.get("mode") == "repository":
+            from repository_task import digest, snapshot
+
+            originals = json.loads((ROOT / "originals.json").read_text())
+            bodies = snapshot(M, originals)
+            from observer import require_clearance
+
+            require_clearance(ROOT, M, bodies)
+            receipts = sorted(ROOT.glob("check-receipt-*.json"))
+            if not receipts:
+                return False, "Run declared checks before review"
+            receipt = json.loads(receipts[-1].read_text())
+            if receipt.get("status") != "PASS" or receipt.get("file_hashes") != {
+                n: digest(b) for n, b in bodies.items()
+            }:
+                return False, "Review requires passing checks for this candidate"
         return (
             not child
             and args.get("subagent_type") == "reviewer"
@@ -69,13 +87,23 @@ def main():
                 fcntl.flock(stream, fcntl.LOCK_EX)
                 stream.seek(0)
                 previous = [json.loads(line) for line in stream]
-                if event.get("tool_name") in ("Task", "Agent") and any(
+                launches = sum(
                     row["allowed"] and row["tool"] in ("Task", "Agent") for row in previous
-                ):
-                    allowed, reason = False, "Reviewer launch ceiling reached"
-                if event.get("tool_name") in ("Edit", "Write") and any(
-                    row["allowed"] and row["tool"] in ("Task", "Agent") for row in previous
-                ):
+                )
+                from review_gate import repair_window
+
+                repair = repair_window(ROOT, M, launches)
+                if event.get("tool_name") in ("Task", "Agent") and launches:
+                    if not repair:
+                        allowed, reason = False, "Reviewer launch ceiling reached"
+                    else:
+                        from repository_task import digest, snapshot
+
+                        old = json.loads((ROOT / "review-gate.json").read_text())[-1]
+                        bodies = snapshot(M, json.loads((ROOT / "originals.json").read_text()))
+                        if old["file_hashes"] == {n: digest(b) for n, b in bodies.items()}:
+                            allowed, reason = False, "Repair must change candidate before re-review"
+                if event.get("tool_name") in ("Edit", "Write") and launches and not repair:
                     allowed, reason = False, "Candidate is frozen after review starts"
                 row = dict(
                     time=time.time(),

@@ -88,7 +88,7 @@ class PackagedTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "ALREADY_CONSUMED"):
                 collector.collect(run)
 
-    def test_complete_launcher_with_fake_provider(self):
+    def fake_provider_delivery(self, deliver=False):
         fixture = json.loads((PLUGIN / "tests/fixtures/batches.json").read_text())
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp).resolve()
@@ -141,6 +141,38 @@ class PackagedTests(unittest.TestCase):
             path = base / "task.json"
             path.write_text(json.dumps(spec))
             run = base / "run"
+            if deliver:
+                real_run = subprocess.run
+                captured = []
+
+                def execute(command):
+                    result = real_run(command, capture_output=True, text=True, timeout=30)
+                    captured.append(result)
+                    return result
+
+                argv = [
+                    "taskroute",
+                    "deliver",
+                    str(path),
+                    "--project",
+                    str(project),
+                    "--run",
+                    str(run),
+                ]
+                with (
+                    patch.object(taskroute.shutil, "which", return_value=str(fake)),
+                    patch.object(sys, "argv", argv),
+                    patch.object(taskroute.subprocess, "run", side_effect=execute),
+                ):
+                    self.assertEqual(taskroute.main(), 0)
+                self.assertEqual(len(captured), 1)
+                view = json.loads(captured[0].stdout)
+                full = json.loads((run / "acceptance-packet.json").read_text())
+                self.assertEqual(view["reviewer_text"], full["reviewer_text"])
+                self.assertEqual(view["backlog"], full["backlog"])
+                self.assertEqual(view["independent_tests"]["tests"], 20)
+                self.assertTrue((run / "live-launch.reserved.json").exists())
+                return
             with patch.object(taskroute.shutil, "which", return_value=str(fake)):
                 taskroute.prepare(path, project, run)
             args = [sys.executable, "-B", str(PLUGIN / "scripts/taskroute.py"), "run", str(run)]
@@ -151,6 +183,12 @@ class PackagedTests(unittest.TestCase):
             second = subprocess.run(args, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(second.returncode, 0)
             self.assertIn("LIVE_ATTEMPT_ALREADY_RESERVED", second.stdout)
+
+    def test_complete_launcher_with_fake_provider(self):
+        self.fake_provider_delivery()
+
+    def test_deliver_end_to_end_with_fake_provider(self):
+        self.fake_provider_delivery(deliver=True)
 
     def test_receipt_regression(self):
         self.replay("receipts")

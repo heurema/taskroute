@@ -1,0 +1,20 @@
+{
+  "name": "taskroute",
+  "interface": {
+    "displayName": "Taskroute"
+  },
+  "plugins": [
+    {
+      "name": "taskroute",
+      "source": {
+        "source": "local",
+        "path": "./plugins/taskroute"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

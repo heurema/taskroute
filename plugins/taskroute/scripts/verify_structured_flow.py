@@ -52,6 +52,10 @@ def verify(root):
     M = json.loads((ROOT / "manifest.json").read_text())
     WORK = Path(M["workspace"])
     ORIGINALS = json.loads((ROOT / "originals.json").read_text())
+    if M.get("mode") == "repository":
+        from repository_task import verify as verify_repository
+
+        return verify_repository(ROOT, M, ORIGINALS)
     previous = sorted(ROOT.glob("check-receipt-*.json"))
     if len(previous) >= M["max_checks"]:
         raise ValueError("CHECK_CEILING")

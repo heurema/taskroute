@@ -1,6 +1,6 @@
 [project]
 name = "taskroute-plugin"
-version = "0.1.1"
+version = "0.2.0"
 description = "Bounded Claude delivery with compact Codex acceptance"
 requires-python = ">=3.11"
 

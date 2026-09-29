@@ -1,10 +1,22 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-09-29
 
-- Make the main README a user-facing introduction with a copyable Codex installation prompt.
-- Add detailed agent installation instructions in `INSTALL.md`.
-- Separate release history, development checks and measurement details from the README.
+Git tag: `v0.2.0`.
+
+- Support language-neutral repository contracts with declared writable files,
+  acceptance criteria, frozen project checks and evidence bound to candidate hashes.
+- Add a single delivery entrypoint and minimal receipts retaining every structured
+  review finding. `CLAUDE_VERIFIED` is delegated verification, not independent Codex review.
+- Add bounded author-owned review repair and explicit artifact-bound return for
+  correction with a fresh reviewer, without replaying the previous conversation.
+- Add a local capture-only failure backlog with idempotent occurrences and recurrence counts.
+- Strengthen paired permitted/forbidden boundary checks; retain observer/probe modes
+  as experimental, not qualified defaults.
+- Add a native GitHub marketplace and agent-operated installation/update instructions.
+- Freeze 80 offline tests and one minimal-lead live scenario with successful checks
+  and host probes. Measured execution token reductions are workload-specific;
+  no universal quality or subscription savings claim. See [verification](VERIFICATION.md).
 
 ## 0.1.1 — 2026-09-28
 
@@ -28,11 +40,11 @@ Git tag: `v0.1.0`.
 
 ## Version policy
 
-Stable releases use fixed `vX.Y.Z` Git tags matching the plugin manifest version.
-Tags are immutable; `main` may contain unreleased changes. Documentation-only
-changes can remain unreleased without changing the installed plugin version.
+Release tags `vX.Y.Z` are immutable and match the plugin manifest. The default
+branch distributes released plugin snapshots; develop runtime changes on branches
+and publish a new version before moving the distribution channel. Documentation-only
+changes need not change the plugin version. Never modify a released tag.
 
-The installer selects the requested tag or the latest stable tag available from
-the supplied source. Request `v0.1.1` explicitly to pin that release. Updates are
-explicit; TaskRoute does not replace itself automatically. Keep previous tags
-available for rollback through the same installation workflow.
+Native catalog updates are explicit. Floating installs follow the default branch;
+pinned installs retain their selected ref. Keep prior tags for rollback. Local
+release preparation is distinct from publishing the branch/tag to GitHub.

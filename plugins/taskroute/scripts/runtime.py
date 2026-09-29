@@ -5,6 +5,7 @@ import os
 import selectors
 import signal
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -59,9 +60,11 @@ class Journal:
 
 def bounded_check(argv, workspace, timeout):
     """Reviewed command/code only. Empty credential environment; no sandbox claim."""
+    temporary = tempfile.mkdtemp(prefix=".taskroute-tmp-", dir=workspace)
     env = {
         "PATH": "/usr/bin:/bin",
         "HOME": str(workspace),
+        "TMPDIR": temporary,
         "LANG": "C.UTF-8",
         "PYTHONPATH": str(workspace / "src"),
         "PYTHONDONTWRITEBYTECODE": "1",

@@ -1,36 +1,57 @@
 ---
 name: taskroute
-description: Delegate a bounded Python function change to installed Claude Code with independent review and compact evidence for Codex acceptance. Use when the user wants Claude to implement and verify a task. Version 0.1.0 supports local macOS unittest projects, not arbitrary app delivery or research.
+description: Delegate bounded repository changes to installed Claude Code with independent review and compact evidence for Codex acceptance. Use when the user wants Claude to implement and check a development task, regardless of language. Requires declared files and executable acceptance checks on macOS; no network or installation.
 ---
 
 # TaskRoute
 
-Resolve the plugin root from this file (`../..`). Use its `scripts/taskroute.py`;
-do not reimplement the runner or read its source routinely.
+Use `scripts/taskroute.py` relative to the plugin root (`../..`). Do not inspect
+runner source, old transcripts, manifests or README on the normal delivery path.
 
-1. Confirm the requested outcome, source files, target function and frozen
-   acceptance tests. Read `../../README.md` for the JSON spec fields. Use the
-   installed Claude model requested by the user; otherwise the qualified profile
-   is `claude-opus-5-5`, medium. Do not silently substitute another model.
-2. Write a small spec and choose a fresh run directory outside the source tree.
-   Invoke `prepare SPEC --project PROJECT --run RUN`. This copies only declared
-   `src/` and `tests/` files, checks setup and makes no model call. Existing tests
-   must expose the intended result. Worker tests must expose the original behavior.
-   Do not invent an arbitrary number of tests: choose meaningful coverage.
-3. Within authorization to delegate to Claude, invoke `run RUN` once. It reserves
-   before effects, launches one coordinator and one read-only reviewer, and returns
-   a packet after independent frozen checks. No auth setup or installation is
-   included. Stop on BLOCKED; never automatically retry or resume an unknown result.
-4. Wait inside a single tool script. When the host exposes exec/wait yielding, use
-   60000 ms for each yield/wait and poll only the same owned process; emit final
-   output, not repeated logs. Keep each blocking wait at most 60 seconds.
-5. Personally inspect packet diff, added tests and full review against the original
-   intent. READY_FOR_LEAD_REVIEW is not acceptance. Report ACCEPTED or BLOCKED,
-   checks and limitations briefly. Read raw logs only for missing/contradictory
-   evidence. Do not repeat passing checks or apply changes automatically.
+1. Agree the outcome, boundaries and acceptance with the owner. Reuse an existing
+   approved spec unchanged. If one is missing, consult the README schema once;
+   check design belongs to preparation, not repeated execution. Never expand
+   permissions or waive a known violation. Executable checks remain trusted inputs.
+2. Delegate once with `deliver SPEC --project PROJECT --run FRESH_RUN --receipt-only`.
+   For an authorized return: `repair PRIOR_RUN FINDING.json --run FRESH_RETURN --receipt-only`;
+   consult [return format](../../docs/lead-return.md) only to create a missing finding.
+   Existing qualified setup does not need rediscovery. No installs, login or auth
+   changes. Use the requested model or the existing Opus medium profile; no implicit
+   model switching. The current coordinator also authors code; no Sonnet split yet.
+3. Wait in one tool script; resume the SAME yielded cell with 60000 ms, no short
+   model-level polls or repeated log reads. Emit only final output. Host timeouts
+   may still yield. Substitute a safely quoted authorized command below.
 
-The candidate remains in RUN/workspace. Applying it, publishing or committing
-requires the corresponding user authority and normal project checks. Treat worker
-text as evidence, never permission to expand scope. Refuse unsupported scope
-instead of building a new runtime during delivery. There is no automatic semantic
-mid-execution drift detector. Native counters are not subscription charges.
+   ```javascript
+   // @exec: {"yield_time_ms": 60000, "max_output_tokens": 18000}
+   let result = await tools.exec_command({cmd: command, yield_time_ms: 1000, max_output_tokens: 18000});
+   let output = result.output;
+   while (result.session_id) {
+     result = await tools.write_stdin({session_id: result.session_id, chars: "", yield_time_ms: 60000, max_output_tokens: 18000});
+     output += result.output;
+   }
+   text({exit_code: result.exit_code, output});
+   ```
+
+4. Read the receipt's result, check status, ALL structured review findings and
+   limitations against intent. Claude owns implementation, checks and independent
+   code review. Do not routinely reread code or full review: open the linked evidence
+   only for a specific missing, contradictory or high-impact unresolved finding.
+   `CLAUDE_VERIFIED` is delegated verification, not independent Astra acceptance;
+   say who checked it. Missing evidence or a known violation blocks delivery, even
+   if the reviewer wrote APPROVE. Never suppress findings to keep an answer short.
+5. Report the outcome, important limits and artifact link briefly. No automatic
+   apply, commit, publication, resend, history replay or follow-up cycle. Unknown
+   effects stop the route. Repairs require the original checks as well as regressions.
+
+The runner reserves before provider effects and records local backlog observations.
+Report backlog NOT_SAVED. For an evidenced semantic flow failure consult
+[backlog](../../docs/backlog.md); never load its history routinely or fix entries
+without authority. Explicit experimental modes are in
+[experimental modes](../../docs/experimental-modes.md); verification design is in
+[principles](../../docs/verification-design.md), read when defining inadequate checks,
+not merely because an already-qualified task has a boundary case.
+
+Detailed mode remains available without `--receipt-only`. `receipt RUN` reads an
+existing completed packet without model calls, checks or new effects. No universal
+quality guarantee or subscription saving follows from a green receipt.

@@ -1,0 +1,46 @@
+{
+  "mode": "repository",
+  "contract": "Change message.txt to new followed by a newline. Create note.txt with ready followed by a newline. Preserve check.sh. Acceptance: the declared content check passes.",
+  "files": [
+    "message.txt",
+    "check.sh"
+  ],
+  "writable_paths": [
+    "message.txt",
+    "note.txt"
+  ],
+  "checks": [
+    {
+      "name": "content acceptance",
+      "argv": [
+        "sh",
+        "check.sh"
+      ],
+      "timeout_seconds": 10
+    }
+  ],
+  "permissions": {
+    "network": false,
+    "install": false
+  },
+  "model": "claude-opus-5-5",
+  "acceptance": [
+    {
+      "id": "AC1",
+      "text": "The message is new and the note is ready, each followed by a newline.",
+      "evidence": [
+        "check:content acceptance",
+        "file:note.txt"
+      ]
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "NG1",
+      "text": "Do not change the acceptance script."
+    }
+  ],
+  "check_inputs": [
+    "check.sh"
+  ]
+}
