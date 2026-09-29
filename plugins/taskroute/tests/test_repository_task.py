@@ -67,6 +67,39 @@ class RepositoryTests(unittest.TestCase):
             taskroute.prepare(path, self.project, self.run, review_repair=review_repair)
         return json.loads((self.run / "manifest.json").read_text())
 
+    def test_preserves_line_endings_and_rejects_actual_source_changes(self):
+        for index, data in enumerate([b"a\nb\n", b"a\r\nb\r\n", b"a\rb\r\nc\n"]):
+            with self.subTest(data=data):
+                self.run = self.base / f"newline-run-{index}"
+                (self.project / "fixture.eml").write_bytes(data)
+                self.spec["files"] = list(self.originals) + ["fixture.eml"]
+                self.spec["check_inputs"] = ["check.sh", "fixture.eml"]
+                self.spec["checks"] = [
+                    dict(
+                        name="acceptance",
+                        argv=[
+                            sys.executable,
+                            "-c",
+                            "from pathlib import Path; assert Path('fixture.eml').read_bytes() == "
+                            + repr(data),
+                        ],
+                        timeout_seconds=10,
+                    )
+                ]
+                manifest = self.prepare()
+                self.assertEqual((self.run / "workspace/fixture.eml").read_bytes(), data)
+                collector.preflight(self.run)
+                self.candidate()
+                self.assertEqual(self.verify(), 0)
+                originals = json.loads((self.run / "originals.json").read_text())
+                (self.run / "workspace/fixture.eml").write_bytes(data + b"changed")
+                with self.assertRaisesRegex(ValueError, "FROZEN_INPUT_CHANGED"):
+                    repository_task.snapshot(manifest, originals)
+                (self.run / "workspace/fixture.eml").write_bytes(data)
+                (self.project / "fixture.eml").write_bytes(data + b"changed")
+                with self.assertRaisesRegex(ValueError, "CANONICAL_SOURCE_CHANGED"):
+                    repository_task.snapshot(manifest, originals)
+
     def candidate(self):
         (self.run / "workspace/message.txt").write_text("new\n")
         (self.run / "workspace/note.txt").write_text("ready\n")

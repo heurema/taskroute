@@ -1,4 +1,4 @@
-# TaskRoute 0.2.1
+# TaskRoute 0.2.2
 
 A local Codex plugin for bounded Claude Code delivery: change declared project files,
 run declared checks, get a separate read-only review, then return a compact evidence packet

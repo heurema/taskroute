@@ -41,7 +41,7 @@ def prepare(
         from repository_task import validate
 
         spec = validate(spec, project)
-        originals = {name: (project / name).read_text() for name in spec["files"]}
+        originals = {name: (project / name).read_bytes().decode("utf-8") for name in spec["files"]}
     elif mode == "python-function":
         files = spec["files"]
         if (
@@ -86,7 +86,7 @@ def prepare(
             n.startswith("tests/") and fnmatch.fnmatch(Path(n).name, pattern) for n in files
         ):
             raise ValueError("MISSING_FROZEN_TESTS")
-        originals = {name: (project / name).read_text() for name in files}
+        originals = {name: (project / name).read_bytes().decode("utf-8") for name in files}
         from verify_structured_flow import outside
 
         outside(originals[spec["target"]], spec["target_function"])
@@ -109,7 +109,7 @@ def prepare(
     for name, body in originals.items():
         p = w / name
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(body)
+        p.write_bytes(body.encode("utf-8"))
 
     def command(script):
         return shlex.join([sys.executable, "-B", str(SCRIPTS / script), str(r)])
@@ -273,7 +273,7 @@ def prepare(
         json.dumps(
             {
                 "status": "PASS",
-                "version": "0.2.1",
+                "version": "0.2.2",
                 "meaning": "Local preparation only; no provider call or authority grant",
             }
         )

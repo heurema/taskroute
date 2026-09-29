@@ -150,7 +150,7 @@ def capture(run, packet, path=None):
             project_id=context.get("project_id", opaque(m["project_root"])),
             task_id=context.get("task_id"),
             run_id=opaque(run),
-            version="0.2.1",
+            version="0.2.2",
         )
         pending = []
         if packet.get("status") not in ("PASS", "PREPARED", "READY_FOR_LEAD_REVIEW"):

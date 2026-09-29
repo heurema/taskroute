@@ -63,7 +63,7 @@ def verify(root):
     reservation = ROOT / f"check-receipt-{number}.json"
     with reservation.open("x") as stream:
         json.dump({"status": "RESERVED"}, stream)
-    source = (WORK / M["target"]).read_text()
+    source = (WORK / M["target"]).read_bytes().decode("utf-8")
     function = M.get("target_function", "normalize_session")
     if not (outside(source, function) == outside(ORIGINALS[M["target"]], function)):
         raise ValueError("OUTSIDE_FUNCTION_CHANGE")
@@ -72,7 +72,7 @@ def verify(root):
         if not (path.is_file() and (not path.is_symlink())):
             raise ValueError("MISSING_OR_SYMLINK_SOURCE")
         if name != M["target"]:
-            if not (path.read_text() == original):
+            if not (path.read_bytes() == original.encode("utf-8")):
                 raise ValueError("READ_ONLY_SOURCE_CHANGED")
     allowed = {*ORIGINALS, M["test_target"], "TASK.md", "checks.json"}
     if not (
@@ -82,7 +82,7 @@ def verify(root):
         )
     ):
         raise ValueError("UNDECLARED_FILE")
-    test = (WORK / M["test_target"]).read_text()
+    test = (WORK / M["test_target"]).read_bytes().decode("utf-8")
     checks = {}
     for label, code, pattern in [
         ("original", ORIGINALS[M["target"]], Path(M["test_target"]).name),
@@ -93,7 +93,7 @@ def verify(root):
         for name, body in {**ORIGINALS, M["target"]: code, M["test_target"]: test}.items():
             path = copy / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(body)
+            path.write_bytes(body.encode("utf-8"))
         stats_path = copy / "test-result.json"
         script = unittest_script(pattern, "test-result.json")
         command = [
@@ -109,7 +109,7 @@ def verify(root):
         (ROOT / f"check-{number}-{label}.log").write_text(result["feedback"])
         stats = read_stats(stats_path, result)
         for name, body in {**ORIGINALS, M["target"]: code, M["test_target"]: test}.items():
-            if not ((copy / name).read_text() == body):
+            if not ((copy / name).read_bytes() == body.encode("utf-8")):
                 raise ValueError("TEST_INPUT_MUTATED")
         checks[label] = {
             "stats": stats,

@@ -109,7 +109,7 @@ def prepare_return(parent, finding_path, destination):
     for name, body in {**bodies, **regressions}.items():
         path = source / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(body)
+        path.write_bytes(body.encode("utf-8"))
     validate(spec, source.resolve())
     spec_path = destination / "task.json"
     spec_path.write_text(json.dumps(spec, indent=2))

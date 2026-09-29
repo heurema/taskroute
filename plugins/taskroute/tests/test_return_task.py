@@ -77,6 +77,15 @@ class ReturnTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "RETURN_CEILING"):
             return_task.prepare_return(run, self.finding, self.case.base / "third")
 
+    def test_return_preserves_crlf_regression_bytes(self):
+        finding = json.loads(self.finding.read_text())
+        finding["regression_files"]["frozen.eml"] = "header\r\n\r\nbody\r\n"
+        self.finding.write_text(json.dumps(finding))
+        result = self.prepare()
+        run = Path(result["run"])
+        self.assertEqual((run / "workspace/frozen.eml").read_bytes(), b"header\r\n\r\nbody\r\n")
+        fixtures.collector.preflight(run)
+
     def test_rejects_changed_candidate(self):
         (self.case.run / "workspace/message.txt").write_text("tampered")
         with self.assertRaisesRegex(ValueError, "PARENT_CANDIDATE_CHANGED"):

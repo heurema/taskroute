@@ -131,7 +131,7 @@ def snapshot(m, originals):
     for name in set(originals) | set(m["writable_paths"]):
         p = w / name
         if p.exists():
-            bodies[name] = p.read_text()
+            bodies[name] = p.read_bytes().decode("utf-8")
         elif name in originals:
             raise ValueError("SOURCE_DELETION_UNSUPPORTED")
     for name, body in originals.items():
@@ -156,7 +156,7 @@ def execute(root, m, bodies, label):
         for name, body in bodies.items():
             p = copy / name
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(body)
+            p.write_bytes(body.encode("utf-8"))
         proc = bounded_check(
             ["/usr/bin/sandbox-exec", "-f", str(root / "test.sb"), *check["argv"]],
             copy,
@@ -165,7 +165,7 @@ def execute(root, m, bodies, label):
         (root / f"{label}-{i}.log").write_text(proc["feedback"])
         for name, body in bodies.items():
             p = copy / name
-            if p.is_symlink() or not p.is_file() or p.read_text() != body:
+            if p.is_symlink() or not p.is_file() or p.read_bytes() != body.encode("utf-8"):
                 raise ValueError("CHECK_INPUT_MUTATED")
         results.append(
             dict(

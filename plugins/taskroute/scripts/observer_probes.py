@@ -144,7 +144,11 @@ def run_probes(root, m, bodies, number, provider):
         raise ValueError("PROBE_EXECUTION_ERROR_NO_RETRY")
     for name, body in bodies.items():
         target = copy / name
-        if target.is_symlink() or not target.is_file() or target.read_text() != body:
+        if (
+            target.is_symlink()
+            or not target.is_file()
+            or target.read_bytes() != body.encode("utf-8")
+        ):
             raise ValueError("PROBE_MUTATED_CANDIDATE")
     check_tools(m)
     return result_outcome(proc["feedback"], m), usage, digest

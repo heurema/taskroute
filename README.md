@@ -67,7 +67,7 @@ The aim is to spend less Codex effort coordinating implementation and reviewing
 logs. Early examples show promising reductions in execution tokens; overall
 savings depend on the task and preparation. [See the measurements](VERIFICATION.md).
 
-**Version 0.2.1:** repository tasks use declared files and project checks, without
+**Version 0.2.2:** repository tasks use declared files and project checks, without
 a language restriction. Requires macOS, Python 3.11+ and an existing Claude Code
 setup. A finite live scenario passed; this is still an experimental workflow,
 not a guarantee of correct code. [Supported scope and usage](plugins/taskroute/README.md).

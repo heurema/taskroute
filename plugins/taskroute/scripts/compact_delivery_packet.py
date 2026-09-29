@@ -49,10 +49,9 @@ def preflight(run):
         p = workspace / relative
         if not p.resolve().is_relative_to(workspace) or not p.is_file():
             raise ValueError("MISSING_OR_ESCAPING_INPUT: " + name)
-        if (
-            hashlib.sha256(p.read_bytes()).hexdigest() != expected
-            or p.read_text() != originals[name]
-        ):
+        if hashlib.sha256(p.read_bytes()).hexdigest() != expected or p.read_bytes() != originals[
+            name
+        ].encode("utf-8"):
             raise ValueError("INITIAL_INPUT_CHANGED: " + name)
     for name, expected in m["canonical_source_hashes"].items():
         if hashlib.sha256((Path(m["project_root"]) / name).read_bytes()).hexdigest() != expected:
@@ -94,8 +93,8 @@ def inspect(run):
     m = json.loads((run / "manifest.json").read_text())
     w = Path(m["workspace"])
     originals = json.loads((run / "originals.json").read_text())
-    source = (w / m["target"]).read_text()
-    tests = (w / m["test_target"]).read_text()
+    source = (w / m["target"]).read_bytes().decode("utf-8")
+    tests = (w / m["test_target"]).read_bytes().decode("utf-8")
     checks = json.loads((w / "checks.json").read_text())
     function = m.get("target_function", "normalize_session")
     if outside(source, function) != outside(originals[m["target"]], function):
@@ -105,7 +104,7 @@ def inspect(run):
         if p.is_symlink() or (p.is_file() and str(p.relative_to(w)) not in allowed):
             raise ValueError("UNDECLARED_WORKSPACE_FILE")
     for n, body in originals.items():
-        if n != m["target"] and (w / n).read_text() != body:
+        if n != m["target"] and (w / n).read_bytes() != body.encode("utf-8"):
             raise ValueError("FROZEN_INPUT_CHANGED")
     for n, expected in m["canonical_source_hashes"].items():
         if hashlib.sha256((Path(m["project_root"]) / n).read_bytes()).hexdigest() != expected:
@@ -203,7 +202,7 @@ def collect(run):
     for n, body in {**originals, m["target"]: source}.items():
         p = scratch / n
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(body)
+        p.write_bytes(body.encode("utf-8"))
     script = unittest_script(m.get("test_pattern", "test_claude_accounting*.py"), "stats.json")
     process = bounded_check(
         ["/usr/bin/sandbox-exec", "-f", str(run / "test.sb"), m["python"], "-B", "-c", script],

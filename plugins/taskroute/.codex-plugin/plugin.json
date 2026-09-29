@@ -1,6 +1,6 @@
 {
   "name": "taskroute",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Bounded Claude delivery with independent review and compact Codex acceptance.",
   "skills": "./skills/",
   "license": "MIT",

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2 — 2026-09-29
+
+- Preserve UTF-8 source bytes including CRLF, LF and mixed line endings during
+  preparation, candidate checks, check copies and explicit returns.
+- Fix false `CANONICAL_SOURCE_CHANGED` failures for unchanged CRLF inputs without
+  weakening source integrity or frozen-input checks.
+- Add newline-preservation and real-mutation rejection regressions. Previously
+  prepared affected runs must be prepared again in a fresh directory.
+
 ## 0.2.1 — 2026-09-29
 
 - Isolate both fake-provider integration suites in per-test temporary backlog databases.

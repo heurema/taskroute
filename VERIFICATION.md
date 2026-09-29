@@ -1,3 +1,11 @@
+# Version 0.2.2 verification
+
+82 offline tests passed (11.819s), including exact LF/CRLF/mixed-ending preservation
+through repository preparation and disposable check workspaces, mutation rejection,
+and CRLF regression inputs through explicit return preparation. Ruff passed.
+No new live model quality claim. Existing affected preparations must be recreated;
+the old manifest is not patched to bypass integrity checks.
+
 # Version 0.2.1 verification
 
 All 80 offline tests passed (11.894s), with the caller backlog overridden to a
