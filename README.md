@@ -14,7 +14,9 @@ TaskRoute is a local **Codex plugin** that keeps this handoff in one workflow.
 - **Working code** in a separate copy of your project.
 - **Test results** checked against the agreed requirements.
 - **An independent review** with the findings included.
-- **A clear outcome:** Claude-verified work or an explanation of what blocked it.
+- **A compact result:** Claude-verified work, checks, review findings and limitations.
+- **A bounded correction path** when a concrete defect is found.
+- **A local failure backlog** for later triage, without automatic fixes.
 
 Your original files stay unchanged until you decide to apply the result.
 
@@ -56,7 +58,10 @@ Once installed, ask Codex:
 
 > Use TaskRoute for this repository task. Agree on the outcome, writable files and
 > acceptance checks first, then delegate the implementation and review to Claude.
-> Return the changes, checks, and your decision.
+> Return a short verification receipt, important findings and a link to the changes.
+
+See [everyday usage and the new 0.2.0 features](USAGE.md) for corrections, receipts
+and the failure backlog.
 
 The aim is to spend less Codex effort coordinating implementation and reviewing
 logs. Early examples show promising reductions in execution tokens; overall

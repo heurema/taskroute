@@ -25,10 +25,19 @@ a non-searchable ancestor. Earlier false approvals below remain relevant limits.
 `CLAUDE_VERIFIED` does not establish a new independent Codex semantic review.
 
 The release passes 80 deterministic offline tests, Ruff and plugin/skill validators.
-The complete staged snapshot is privacy-checked before tagging. Native Git catalog add/refresh/reinstall commands
-were verified against official documentation and installed CLI help. Remote v0.2.0
-installation and unattended updating are not established by those checks; publication
-and testing the installed copy are separate steps.
+The complete staged snapshot passed the privacy gate. Version 0.2.0 was published
+at commit `9c7ea359c2a341d8db36dcddf1f0c97e0af307df` with immutable tag `v0.2.0`.
+Remote branch/tag readback matched. Native GitHub marketplace installation fetched
+that exact revision; release hashes matched both downloaded and installed files.
+All 80 tests passed from the installed copy in 13.645 seconds.
+
+Native catalog refresh and reinstallation of the same version succeeded; the final
+listing showed only `taskroute@taskroute` 0.2.0 installed and enabled. The previous
+personal installation was removed after verification, with its source preserved.
+This tests refresh/reinstall, not migration to a future version or unattended
+updates. No new live model task was run during installation. Open a new chat to
+load the updated skill. Publication used the Git branch and tag; no separate
+GitHub Release page was created.
 
 # Historical verification (superseded status, retained evidence)
 

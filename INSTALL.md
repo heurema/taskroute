@@ -91,5 +91,7 @@ exact TaskRoute plugin entry, not task outputs or unrelated marketplace settings
 - [Codex plugin packaging and repository catalogs](https://developers.openai.com/plugins/build/plugins)
 - [Codex CLI reference](https://developers.openai.com/codex/cli/reference)
 
-Verified documentation and installed CLI command help on 2026-09-29. A local
-catalog/package check does not prove installation from an unpublished remote revision.
+Verified on 2026-09-29: native GitHub installation of published v0.2.0, installed
+file hashes, all 80 installed-copy tests, catalog refresh and same-version reinstall.
+Future-version migration and unattended updates remain unverified. See
+[verification evidence](VERIFICATION.md).
