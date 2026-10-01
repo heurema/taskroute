@@ -12,6 +12,32 @@ from pathlib import Path
 from runtime import Journal, clean_environment
 
 ROOT = Path(__file__).resolve().parent
+try:
+    from compact_delivery_packet import preflight
+
+    preflight(ROOT)
+except Exception as exc:
+    failure = dict(
+        status="PREFLIGHT_FAILED",
+        exit_code=None,
+        live_launches=0,
+        resends=0,
+        reason=str(exc),
+        error_type=type(exc).__name__,
+        observed_model=None,
+        accepted_model=None,
+        usage=None,
+        automatic_retry=False,
+    )
+    for name in ("launch-preflight-error.json", "terminal.json"):
+        try:
+            with (ROOT / name).open("x") as receipt:
+                json.dump(failure, receipt, indent=2)
+        except FileExistsError:
+            pass  # Preserve prior attempt evidence on a rejected replay.
+    print(json.dumps(failure))
+    raise SystemExit(2) from None
+
 M = json.loads((ROOT / "manifest.json").read_text())
 
 session = str(uuid.uuid4())
@@ -54,11 +80,6 @@ args = [
     "--prompt-suggestions",
     "false",
 ]
-for name, digest in M["canonical_source_hashes"].items():
-    if not (hashlib.sha256((Path(M["project_root"]) / name).read_bytes()).hexdigest() == digest):
-        raise ValueError("SOURCE_INTEGRITY_CHECK_FAILED")
-if not (json.loads((ROOT / "preflight.json").read_text())["status"] == "PASS"):
-    raise ValueError("SOURCE_INTEGRITY_CHECK_FAILED")
 Journal(ROOT).reserve(
     "live-launch",
     session_id=session,
@@ -69,15 +90,31 @@ Journal(ROOT).reserve(
 start = time.monotonic()
 status = "ENDED"
 with (ROOT / "stdout.jsonl").open("wb") as out, (ROOT / "stderr.log").open("wb") as err:
-    p = subprocess.Popen(
-        args,
-        cwd=M["workspace"],
-        env=clean_environment(),
-        stdin=subprocess.PIPE,
-        stdout=out,
-        stderr=err,
-        start_new_session=True,
-    )
+    try:
+        p = subprocess.Popen(
+            args,
+            cwd=M["workspace"],
+            env=clean_environment(),
+            stdin=subprocess.PIPE,
+            stdout=out,
+            stderr=err,
+            start_new_session=True,
+        )
+    except OSError:
+        failure = dict(
+            status="LAUNCH_FAILED_UNKNOWN",
+            exit_code=None,
+            session_id=session,
+            live_launches=None,
+            launch_attempts=1,
+            resends=0,
+            automatic_retry=False,
+            observed_model=None,
+            usage=None,
+        )
+        (ROOT / "terminal.json").write_text(json.dumps(failure, indent=2))
+        print(json.dumps(failure))
+        raise SystemExit(2) from None
     (ROOT / "process.json").write_text(json.dumps({"pid": p.pid, "session_id": session}))
     try:
         p.communicate((ROOT / "prompt.txt").read_bytes(), timeout=M["wall_seconds"])
@@ -96,6 +133,8 @@ result = {
     "session_id": session,
     "live_launches": 1,
     "resends": 0,
+    "wait_mode": "process_completion",
+    "containment": "instructions_and_hooks_only",
 }
 (ROOT / "terminal.json").write_text(json.dumps(result, indent=2))
 print(json.dumps(result))

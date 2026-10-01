@@ -152,7 +152,7 @@ def prepare(
     m["canonical_source_hashes"] = dict(m["source_hashes"])
     (r / "manifest.json").write_text(json.dumps(m, indent=2))
     (r / "originals.json").write_text(json.dumps(originals))
-    from task_contract import COORDINATOR_INSTRUCTION, REVIEW_INSTRUCTION, task_text
+    from task_contract import COORDINATOR_INSTRUCTION, review_instruction, task_text
 
     (w / "TASK.md").write_text(task_text(spec) if mode == "repository" else spec["contract"])
     settings = {
@@ -176,7 +176,13 @@ def prepare(
         settings["hooks"]["SubagentStop"] = [
             {
                 "matcher": "reviewer",
-                "hooks": [{"type": "command", "command": command("review_gate.py"), "timeout": 10}],
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": command("review_gate.py"),
+                        "timeout": 10,
+                    }
+                ],
             }
         ]
     (r / "settings.json").write_text(json.dumps(settings))
@@ -203,7 +209,7 @@ def prepare(
         }
     }
     if mode == "repository":
-        agents["reviewer"]["prompt"] += "\n" + REVIEW_INSTRUCTION
+        agents["reviewer"]["prompt"] += "\n" + review_instruction(spec)
     if probes or review_repair:
         agents["reviewer"]["maxTurns"] = 8
         agents["reviewer"]["prompt"] += (
@@ -280,7 +286,26 @@ def prepare(
     )
     from compact_delivery_packet import preflight
 
-    preflight(r)
+    try:
+        readiness = preflight(r)
+    except Exception as exc:
+        failure = dict(
+            status="BLOCKED",
+            stage="preflight",
+            primary="local_failure",
+            reason=str(exc),
+            error_type=type(exc).__name__,
+            model_calls=0,
+            automatic_retry=False,
+            readiness="NOT_READY",
+            observed_model=None,
+            accepted_model=None,
+            usage=None,
+        )
+        (r / "preflight.json").write_text(json.dumps(failure, indent=2))
+        (r / "packet-error.json").write_text(json.dumps(failure, indent=2))
+        raise
+    (r / "preflight.json").write_text(json.dumps(readiness, indent=2))
     return {"status": "PREPARED", "run": str(r), "model_calls": 0}
 
 
@@ -299,7 +324,9 @@ def main():
             help="Enable independent pre-check observation and one correction opportunity",
         )
         p.add_argument(
-            "--probe", action="store_true", help="Experimental frozen executable observation"
+            "--probe",
+            action="store_true",
+            help="Experimental frozen executable observation",
         )
         p.add_argument(
             "--review-repair",

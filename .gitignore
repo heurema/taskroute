@@ -12,3 +12,11 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Local experiment evidence and generated logs
+.build/
+/runs/
+/tmp/
+/.local-snapshots/
+/release-artifacts/
+*.log

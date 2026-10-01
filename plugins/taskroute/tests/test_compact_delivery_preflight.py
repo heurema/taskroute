@@ -19,6 +19,13 @@ class PreflightTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.run = Path(self.temp.name).resolve()
+        self.probe = self.enterContext(
+            patch.object(
+                packet,
+                "bounded_check",
+                return_value={"returncode": 0, "stop_reason": None, "feedback": ""},
+            )
+        )
         work = self.run / "workspace"
         work.mkdir()
         body = "def example():\n    pass\n"
@@ -26,6 +33,7 @@ class PreflightTests(unittest.TestCase):
         manifest = dict(
             workspace=str(work),
             python=sys.executable,
+            claude_binary=sys.executable,
             source_hashes={"example.py": hashlib.sha256(body.encode()).hexdigest()},
             canonical_source_hashes={},
         )
@@ -39,6 +47,97 @@ class PreflightTests(unittest.TestCase):
             (self.run / name).write_text(json.dumps(value))
         for name in ["launch.py", "prompt.txt", "test.sb"]:
             (self.run / name).write_text("fixture")
+
+    def test_denied_workspace_never_launches(self):
+        original = packet.tempfile.TemporaryFile
+
+        def deny_workspace(*args, **kwargs):
+            if Path(kwargs.get("dir", ".")).name == "workspace":
+                raise PermissionError("fixture denial")
+            return original(*args, **kwargs)
+
+        with (
+            patch.object(packet.tempfile, "TemporaryFile", side_effect=deny_workspace),
+            patch.object(sys, "argv", ["packet", str(self.run), "--launch"]),
+            patch.object(packet.subprocess, "run") as launch,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(packet.main(), 2)
+        launch.assert_not_called()
+        self.assertIn("WORKSPACE_NOT_WRITABLE", (self.run / "packet-error.json").read_text())
+
+    def test_unavailable_workspace(self):
+        work = self.run / "workspace"
+        (work / "example.py").unlink()
+        work.rmdir()
+        with self.assertRaisesRegex(ValueError, "MISSING_OR_ESCAPING_INPUT"):
+            packet.preflight(self.run)
+
+    def test_dependency_expansion_rejected_before_probe_or_launch(self):
+        for root in ("/fixture/shared", "/fixture/library", "/missing", "/denied"):
+            m = json.loads((self.run / "manifest.json").read_text())
+            m["check_environment"] = {"read_only_roots": [root]}
+            (self.run / "manifest.json").write_text(json.dumps(m))
+            with (
+                patch.object(sys, "argv", ["packet", str(self.run), "--launch"]),
+                patch.object(packet.subprocess, "run") as launch,
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                self.assertEqual(packet.main(), 2)
+            launch.assert_not_called()
+        self.probe.assert_not_called()
+
+    def test_missing_test_executable_blocks(self):
+        m = json.loads((self.run / "manifest.json").read_text())
+        m["python"] = str(self.run / "missing-python")
+        (self.run / "manifest.json").write_text(json.dumps(m))
+        with self.assertRaisesRegex(ValueError, "PYTHON_NOT_EXECUTABLE"):
+            packet.preflight(self.run)
+
+    def test_missing_repository_check_tool_before_process(self):
+        m = json.loads((self.run / "manifest.json").read_text())
+        m.update(
+            mode="repository",
+            checks=[{"argv": [str(self.run / "missing-tool")], "executable_sha256": "unknown"}],
+        )
+        (self.run / "manifest.json").write_text(json.dumps(m))
+        with (
+            patch.object(sys, "argv", ["packet", str(self.run), "--launch"]),
+            patch.object(packet.subprocess, "run") as launch,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(packet.main(), 2)
+        launch.assert_not_called()
+        self.assertIn("CHECK_TOOL_CHANGED", (self.run / "packet-error.json").read_text())
+
+    def test_unavailable_sandbox_before_probe(self):
+        access = packet.os.access
+        with patch.object(
+            packet.os,
+            "access",
+            side_effect=lambda p, mode: (
+                False if str(p) == "/usr/bin/sandbox-exec" else access(p, mode)
+            ),
+        ):
+            with self.assertRaisesRegex(ValueError, "TEST_SANDBOX_UNAVAILABLE"):
+                packet.preflight(self.run)
+        self.probe.assert_not_called()
+
+    def test_denied_check_environment_no_provider(self):
+        self.probe.return_value = {"returncode": 1, "stop_reason": None, "feedback": "private"}
+        with (
+            patch.object(sys, "argv", ["packet", str(self.run), "--launch"]),
+            patch.object(packet.subprocess, "run") as launch,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(packet.main(), 2)
+        launch.assert_not_called()
+        error = json.loads((self.run / "packet-error.json").read_text())
+        self.assertEqual(error["stage"], "preflight")
+        self.assertFalse(error["automatic_retry"])
+        self.assertIsNone(error["observed_model"])
+        self.assertIsNone(error["usage"])
+        self.assertNotIn("private", json.dumps(error))
 
     def test_missing_scratch_is_created_without_reserving_launch(self):
         self.assertEqual(packet.preflight(self.run)["status"], "PASS")
@@ -62,6 +161,13 @@ class PreflightTests(unittest.TestCase):
         (self.run / "settings.json").unlink()
         with self.assertRaisesRegex(ValueError, "MISSING_LAUNCH_FILE"):
             packet.preflight(self.run)
+
+    def test_prior_terminal_is_preserved(self):
+        terminal = self.run / "terminal.json"
+        terminal.write_text('{"status":"ENDED"}')
+        with self.assertRaisesRegex(ValueError, "PRIOR_LAUNCH_RECEIPT"):
+            packet.preflight(self.run)
+        self.assertEqual(terminal.read_text(), '{"status":"ENDED"}')
 
     def test_existing_attempt_cannot_be_replayed(self):
         (self.run / "live-launch.reserved.json").write_text("{}")

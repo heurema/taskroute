@@ -1,3 +1,5 @@
+> **PAUSED — October 1, 2026.** Development experiments are on hold. Full-route qualification remains **NOT_QUALIFIED**. No automatic or paid runs are authorized. See the [checkpoint, checks, limitations and resume steps](docs/PAUSE.md).
+
 ![TaskRoute — Delegate the work. Keep the verdict.](plugins/taskroute/assets/flow.svg)
 
 # TaskRoute

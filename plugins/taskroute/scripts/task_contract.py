@@ -3,8 +3,10 @@
 import json
 import re
 
-REVIEW_INSTRUCTION = """Finish with exactly one single-line TASKROUTE_REVIEW: JSON object:
-{"verdict":"APPROVE|CHANGES","acceptance":[{"id":"AC1","status":"MET|NOT_MET|UNKNOWN","evidence":["check:name"],"detail":"Observed evidence, not just a claim"}],"non_goals":[{"id":"NG1","status":"KEPT|BROKEN|UNKNOWN","detail":"Evidence"}]}
+REVIEW_INSTRUCTION = """Finish with exactly one single-line TASKROUTE_REVIEW: JSON object.
+Top-level keys are exactly verdict, acceptance, non_goals. Verdict is APPROVE or CHANGES.
+Acceptance rows have exactly id, status, evidence, detail; status is MET/NOT_MET/UNKNOWN.
+Non-goal rows have exactly id, status, detail; status is KEPT/BROKEN/UNKNOWN.
 Include every acceptance and non-goal ID exactly once. Evidence must include every
 reference required by that criterion in TASK.md. Use UNKNOWN for missing evidence;
 do not infer success from exit zero alone. Assess adequacy of the declared checks.
@@ -15,6 +17,45 @@ A known contradiction of a mandatory requirement is NOT_MET, never a non-blockin
 risk you can waive. Only the owner may change requirements. Repairs must preserve
 original-input semantics and pass unchanged regression/property checks.
 Do not return APPROVE if any criterion is not MET or any non-goal is not KEPT."""
+
+
+def review_instruction(spec):
+    """Generate exact task IDs; prompt guidance, not a provider schema guarantee."""
+    skeleton = dict(
+        verdict="CHANGES",
+        acceptance=[
+            dict(
+                id=c["id"],
+                status="UNKNOWN",
+                evidence=c["evidence"],
+                detail="State observed evidence and remaining gaps",
+            )
+            for c in spec["acceptance"]
+        ],
+        non_goals=[
+            dict(id=c["id"], status="UNKNOWN", detail="State observed scope evidence")
+            for c in spec["non_goals"]
+        ],
+    )
+    ids = dict(
+        acceptance=[c["id"] for c in spec["acceptance"]],
+        non_goals=[c["id"] for c in spec["non_goals"]],
+    )
+    return (
+        REVIEW_INSTRUCTION
+        + "\nExact task ID enums: "
+        + json.dumps(ids)
+        + ". Emit every listed ID exactly once in its own array and no other IDs. "
+        + "Do not invent criteria, add placeholders or report removed criteria. "
+        + "Do not copy an example from another task. UNKNOWN is a status for a declared ID, "
+        + "never permission to add an ID. The collector rejects extra, missing or duplicate IDs; "
+        + "an APPROVE claim cannot override that gate.\nComplete task-specific shape: "
+        + json.dumps(skeleton)
+        + "\nReplace verdict/status/detail only according to actual review evidence. "
+        + "Required evidence references and exact IDs come solely from this task contract."
+    )
+
+
 COORDINATOR_INSTRUCTION = """Finish with exactly one single-line TASKROUTE_RESULT: JSON object:
 {"status":"READY_FOR_LEAD|BLOCKED","reason":"Evidence or the specific blocker"}.
 Stop BLOCKED if review requests changes, evidence is missing, or the task needs

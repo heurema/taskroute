@@ -1,0 +1,107 @@
+{
+  "spec": {
+    "acceptance": [
+      {
+        "id": "AC1",
+        "text": "Correct report for every valid list of built-in integers, empty/negative/large numbers; source review plus exposed finite domain121lists and singleton/mixed examples.",
+        "evidence": [
+          "check:frozen acceptance",
+          "file:summary.py",
+          "review"
+        ]
+      },
+      {
+        "id": "AC2",
+        "text": "Reject non-built-in-list input and non-built-in-int items including bool with ValueError, without input mutation. Validate before computing.",
+        "evidence": [
+          "check:frozen acceptance",
+          "file:summary.py",
+          "review"
+        ]
+      }
+    ],
+    "non_goals": [
+      {
+        "id": "NG1",
+        "text": "Only summary.py changes. No I/O/network/dependencies, weakening frozen tests, prior solutions, other tasks, external/canonical apply, authentication or settings changes."
+      }
+    ],
+    "files": [
+      "summary.py",
+      "test_summary.py"
+    ],
+    "writable_paths": [
+      "summary.py"
+    ],
+    "check_inputs": [
+      "test_summary.py"
+    ],
+    "checks": [
+      {
+        "name": "frozen acceptance",
+        "argv": [
+          "python3",
+          "-I",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          ".",
+          "-p",
+          "test_summary.py",
+          "-v"
+        ],
+        "timeout_seconds": 10
+      }
+    ]
+  },
+  "review": {
+    "verdict": "APPROVE",
+    "acceptance": [
+      {
+        "id": "AC1",
+        "status": "MET",
+        "evidence": [
+          "check:frozen acceptance",
+          "file:summary.py",
+          "review"
+        ],
+        "detail": "Source: new dict with exactly count/sum/min/max, empty case returns 0/0/None/None, loop uses Python's exact integer arithmetic, no special-casing. check:frozen acceptance passed (exit 0, 8 OK) with an independent oracle (builtin sum/min/max) over all 121 lists of length 0-4 from {-2,0,3}, plus single, mixed and +/-10**50 examples. Remaining gap: correctness beyond that domain is source-only."
+      },
+      {
+        "id": "AC2",
+        "status": "MET",
+        "evidence": [
+          "check:frozen acceptance",
+          "file:summary.py",
+          "review"
+        ],
+        "detail": "Source: type(values) is not list and type(item) is not int are general exact-type checks that reject list/int subclasses and bool; every item is validated before any computation; the input is only copied and read, never mutated. Tests test_non_list, test_invalid_items (bad item in second position) and test_input_unchanged passed. Gap: no-mutation on the rejection path is source-only."
+      },
+      {
+        "id": "AC3_PLACEHOLDER_REMOVED",
+        "status": "UNKNOWN",
+        "evidence": [],
+        "detail": "n/a"
+      }
+    ],
+    "non_goals": [
+      {
+        "id": "NG1",
+        "status": "KEPT",
+        "detail": "summary.py has no imports, I/O, network calls or dependencies. test_summary.py still enforces the full contract (list/int subclasses, both booleans, 121-list domain) and its hash matches checks.json. Limitation: no baseline or diff was available, so 'only summary.py changed' and the absence of out-of-workspace changes were not directly verified."
+      }
+    ]
+  },
+  "coordinator": {
+    "status": "READY_FOR_LEAD",
+    "reason": "summary.py implements general exact-type list/int validation (bool and subclasses rejected) before computing, with no mutation and exact count/sum/min/max; the frozen acceptance check passed (8/8, exit 0) on the only run; the reviewer APPROVED with AC1 and AC2 MET and NG1 KEPT. Limitations: checks.json was hook-blocked for the author, the reviewer had no baseline diff, and the review JSON has a stray AC3 placeholder entry."
+  },
+  "bodies": {
+    "summary.py": "def summarize(values):\n    \"\"\"Return count/sum/min/max for a list of non-bool integers.\"\"\"\n    if type(values) is not list:\n        raise ValueError('values must be a built-in list')\n    items = values[:]\n    for item in items:\n        if type(item) is not int:\n            raise ValueError('every item must be a built-in int (bool not allowed)')\n    if not items:\n        return {'count': 0, 'sum': 0, 'min': None, 'max': None}\n    total = 0\n    lowest = highest = items[0]\n    for item in items:\n        total += item\n        if item < lowest:\n            lowest = item\n        if item > highest:\n            highest = item\n    return {'count': len(items), 'sum': total, 'min': lowest, 'max': highest}\n",
+    "test_summary.py": "import unittest\nfrom summary import summarize\n\nclass FrozenAcceptance(unittest.TestCase):\n    def test_empty(self):\n        self.assertEqual(summarize([]), {'count':0, 'sum':0, 'min':None, 'max':None})\n    def test_single(self):\n        self.assertEqual(summarize([7]), {'count':1, 'sum':7, 'min':7, 'max':7})\n    def test_mixed(self):\n        self.assertEqual(summarize([3,-4,0,3]), {'count':4, 'sum':2, 'min':-4, 'max':3})\n    def test_large(self):\n        big=10**50\n        self.assertEqual(summarize([big,-big,1]), {'count':3, 'sum':1, 'min':-big, 'max':big})\n    def test_input_unchanged(self):\n        data=[3,1,2];before=data.copy();summarize(data);self.assertEqual(data,before)\n    def test_non_list(self):\n        class ListSubclass(list): pass\n        for data in (None, (), '', {}, iter([1]), ListSubclass([1])):\n            with self.subTest(data=type(data).__name__):\n                with self.assertRaises(ValueError):summarize(data)\n    def test_invalid_items(self):\n        class IntSubclass(int): pass\n        for item in (True, False, 1.0, '1', None, [], {}, IntSubclass(1)):\n            with self.subTest(item=type(item).__name__):\n                with self.assertRaises(ValueError):summarize([1,item])\n    def test_finite_independent_domain(self):\n        import itertools\n        for size in range(5):\n            for values in itertools.product((-2,0,3),repeat=size):\n                data=list(values)\n                expected=dict(count=len(data),sum=sum(data),min=min(data) if data else None,max=max(data) if data else None)\n                self.assertEqual(summarize(data),expected)\n\nif __name__=='__main__':unittest.main()\n"
+  },
+  "original_source": "qualification-one/run/acceptance-packet.json",
+  "saved_review_sha256": "3ecb330d7dd73bcf2b92d4b6a4c44371b72f89e3bf6c45a71f8d135cbb28bfc7"
+}

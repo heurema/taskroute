@@ -1,3 +1,5 @@
+> **Project paused — October 1, 2026.** Full-route qualification remains **NOT_QUALIFIED**. See the [pause checkpoint](../../docs/PAUSE.md) before resuming.
+
 # TaskRoute 0.2.2
 
 A local Codex plugin for bounded Claude Code delivery: change declared project files,
@@ -52,6 +54,17 @@ python3 -B scripts/taskroute.py preflight /tmp/taskroute-example
 ```
 
 Preparation and preflight make no model calls. Use a fresh run directory each time.
+Preflight checks workspace write access, pinned test executables and a stdlib
+read/write probe inside the existing macOS test boundary before any provider call.
+Additional dependency roots or network exceptions are unsupported and rejected.
+Transitive dependencies and provider auth/availability remain unverified.
+A failed preparation records BLOCKED in preflight.json and packet-error.json.
+The direct generated launcher rechecks readiness before reserving a provider attempt.
+Failure receipts preserve the primary native reason and unknown identity/usage;
+missing checks/review artifacts are secondary. Prior terminal receipts are preserved.
+The launcher waits for process completion once; it does not poll provider status.
+Provider instructions/hooks do not establish an OS sandbox or timeout equivalence.
+
 After authorizing delegation, this command starts the one reserved live attempt:
 
 ```sh

@@ -5,6 +5,7 @@ import difflib
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -12,6 +13,168 @@ from pathlib import Path
 
 from runtime import Journal, bounded_check, unittest_script
 from verify_structured_flow import outside, read_stats
+
+TOKEN = re.compile(r"[a-z0-9_]{1,64}")
+
+
+class DeliveryFailure(ValueError):
+    """Primary native failure; secondary lists success-only artifacts left unread."""
+
+    def __init__(self, primary, stage, evidence, secondary):
+        super().__init__("NONTERMINAL_WORKER: " + primary)
+        self.primary, self.stage, self.evidence, self.secondary = (
+            primary,
+            stage,
+            evidence,
+            secondary,
+        )
+
+
+def _token(value, fallback):
+    value = str(value).lower() if isinstance(value, str) else ""
+    return value if TOKEN.fullmatch(value) else fallback
+
+
+def native_outcome(run, m):
+    """Inspect terminal and native result before any success-only artifact.
+
+    Evidence holds only sanitized scalar fields, never raw model or error text.
+    """
+    terminal_path, stream = run / "terminal.json", run / "stdout.jsonl"
+    invalid_terminal = False
+    try:
+        terminal = json.loads(terminal_path.read_text()) if terminal_path.is_file() else None
+        invalid_terminal = terminal_path.is_file() and not isinstance(terminal, dict)
+    except (OSError, ValueError):
+        terminal, invalid_terminal = None, True
+    missing_terminal = not isinstance(terminal, dict)
+    terminal = {} if missing_terminal else terminal
+    rows, invalid = [], False
+    if stream.is_file():
+        try:
+            lines = stream.read_text().splitlines()
+        except (OSError, UnicodeError):
+            lines, invalid = [], True
+        for line in lines:
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                row = None
+            if isinstance(row, dict):
+                rows.append(row)
+            else:
+                invalid = True
+    results = [x for x in rows if x.get("type") == "result"]
+    result = results[0] if len(results) == 1 else {}
+    subtype = result.get("subtype", "success") if len(results) == 1 else None
+    status = terminal.get("status", "MISSING" if missing_terminal else "ENDED")
+    if invalid_terminal:
+        primary = "invalid_terminal"
+    elif missing_terminal:
+        primary = "missing_terminal"
+    elif invalid:
+        primary = "invalid_stream"
+    elif len(results) > 1:
+        primary = "duplicate_result"
+    elif results and (result.get("is_error") or subtype != "success"):
+        primary = _token(subtype, "result_error")
+        primary = "result_error" if primary == "success" else primary
+    elif status != "ENDED":
+        primary = _token(status, "abnormal_terminal")
+    elif not results:
+        primary = "missing_result"
+    elif terminal.get("exit_code") != 0:
+        primary = "nonzero_exit"
+    else:
+        return rows, result
+    exit_code, turns = terminal.get("exit_code"), result.get("num_turns")
+    evidence = dict(
+        terminal_status=_token(status, "unrecognized"),
+        exit_code=exit_code if type(exit_code) is int else None,
+        result_count=len(results),
+        subtype=_token(subtype, "unrecognized") if subtype is not None else None,
+        is_error=bool(result.get("is_error")) if results else None,
+        requested_model=m.get("model"),
+        observed_model=None,
+        accepted_model=None,
+        usage=None,
+        num_turns=turns if type(turns) is int else None,
+        max_parent_turns=m.get("max_parent_turns"),
+        check_receipts=len(list(run.glob("check-receipt-*.json"))),
+    )
+    expected = [Path(m["workspace"]) / "checks.json", run / "gate-events.jsonl"]
+    if m.get("review_gate_enabled"):
+        expected.append(run / "review-gate.json")
+    secondary = ["MISSING_SUCCESS_ARTIFACT: " + p.name for p in expected if not p.exists()]
+    if not evidence["check_receipts"]:
+        secondary.append("CHECKS_NOT_RUN")
+    raise DeliveryFailure(primary, "native_result", evidence, secondary)
+
+
+def launch_environment(run, m):
+    """Probe current permissions; never grant access or run project test code."""
+    environment = m.get("check_environment", {})
+    if environment not in ({}, None):
+        raise ValueError("UNSUPPORTED_CHECK_ENVIRONMENT: no additional roots or network")
+    workspace = Path(m["workspace"])
+    if not workspace.is_dir():
+        raise ValueError("WORKSPACE_UNAVAILABLE")
+    targets = m.get("writable_paths", [m.get("target"), m.get("test_target")])
+    directories = {workspace}
+    for name in filter(None, targets):
+        target = workspace / name
+        if Path(name).is_absolute() or ".." in Path(name).parts:
+            raise ValueError("INVALID_WRITE_PATH")
+        if not target.resolve().is_relative_to(workspace):
+            raise ValueError("WORKSPACE_WRITE_ESCAPE")
+        parent = target.parent
+        while not parent.exists():
+            parent = parent.parent
+        directories.add(parent)
+        if target.exists():
+            try:
+                # Opening for write checks access without changing bytes.
+                with target.open("r+b"):
+                    pass
+            except OSError as exc:
+                raise ValueError("WORKSPACE_NOT_WRITABLE") from exc
+    try:
+        for directory in directories:
+            with tempfile.TemporaryFile(dir=directory) as probe:
+                probe.write(b"workspace-preflight")
+                probe.flush()
+    except OSError as exc:
+        raise ValueError("WORKSPACE_NOT_WRITABLE") from exc
+    for key, reason in (
+        ("claude_binary", "PROVIDER_NOT_EXECUTABLE"),
+        ("python", "PYTHON_NOT_EXECUTABLE"),
+    ):
+        binary = Path(m.get(key, ""))
+        if not binary.is_file() or not os.access(binary, os.X_OK):
+            raise ValueError(reason)
+    sandbox = Path("/usr/bin/sandbox-exec")
+    if not sandbox.is_file() or not os.access(sandbox, os.X_OK):
+        raise ValueError("TEST_SANDBOX_UNAVAILABLE")
+    scratch = run / "scratch"
+    # Actual read/write/import capability in the unchanged check boundary.
+    # This probes declared inputs only; arbitrary transitive dependencies are unknown.
+    inputs = [str(workspace / name) for name in m["source_hashes"]]
+    inputs.extend(check["argv"][0] for check in m.get("checks", []))
+    script = (
+        "import pathlib, unittest; "
+        + "[pathlib.Path(p).open('rb').close() for p in "
+        + repr(inputs)
+        + "]; "
+        + "pathlib.Path('probe').write_bytes(b'preflight')"
+    )
+    with tempfile.TemporaryDirectory(dir=scratch) as directory:
+        result = bounded_check(
+            [str(sandbox), "-f", str(run / "test.sb"), m["python"], "-B", "-c", script],
+            Path(directory),
+            10,
+        )
+    if result["returncode"] != 0 or result["stop_reason"]:
+        raise ValueError("TEST_ENVIRONMENT_UNAVAILABLE")
 
 
 def preflight(run):
@@ -37,6 +200,8 @@ def preflight(run):
         raise ValueError("PREPARATION_NOT_APPROVED")
     if (run / "live-launch.reserved.json").exists():
         raise ValueError("LIVE_ATTEMPT_ALREADY_RESERVED")
+    if (run / "terminal.json").exists() or (run / "launch-preflight-error.json").exists():
+        raise ValueError("PRIOR_LAUNCH_RECEIPT: use a fresh run")
     workspace = run / "workspace"
     if workspace.is_symlink() or Path(m["workspace"]) != workspace:
         raise ValueError("WORKSPACE_PATH_MISMATCH")
@@ -72,6 +237,7 @@ def preflight(run):
     with tempfile.TemporaryFile(dir=scratch) as probe:
         probe.write(b"local-preflight")
         probe.flush()
+    launch_environment(run, m)
     return {
         "status": "PASS",
         "model_calls": 0,
@@ -83,8 +249,15 @@ def preflight(run):
             "canonical_hashes",
             "python",
             "scratch_writable",
+            "workspace_writable",
+            "test_environment",
+            "provider_executable",
         ],
-        "limitations": ["Does not verify provider availability or future model behavior"],
+        "limitations": [
+            "Does not verify provider auth, availability or future model behavior",
+            "Transitive test dependencies remain unverified",
+            "Provider instructions/hooks are not an OS sandbox or timeout guarantee",
+        ],
     }
 
 
@@ -124,17 +297,7 @@ def inspect(run):
 
 def review_evidence(run, m):
     """Validate transport/review evidence, independent of the project language."""
-    rows = [json.loads(line) for line in (run / "stdout.jsonl").read_text().splitlines()]
-    results = [x for x in rows if x.get("type") == "result"]
-    terminal = json.loads((run / "terminal.json").read_text())
-    if (
-        len(results) != 1
-        or results[0].get("is_error")
-        or terminal["exit_code"] != 0
-        or terminal.get("status", "ENDED") != "ENDED"
-    ):
-        raise ValueError("NONTERMINAL_WORKER")
-    result = results[0]
+    rows, result = native_outcome(run, m)
     if m["model"] not in result.get("modelUsage", {}):
         raise ValueError("MODEL_IDENTITY_UNVERIFIED")
     children = result.get("subagent_stats", {})
@@ -188,6 +351,7 @@ def review_evidence(run, m):
 def collect(run):
     run = Path(run).resolve()
     manifest = json.loads((run / "manifest.json").read_text())
+    native_outcome(run, manifest)
     if manifest.get("mode") == "repository":
         from repository_task import collect as collect_repository
 
@@ -260,18 +424,23 @@ def lead_view(packet, run):
 
 def main():
     run = Path(sys.argv[1]).resolve()
+    stage = "preflight"
     try:
         if "--preflight" in sys.argv:
             print(json.dumps(preflight(run)))
             return 0
         if "--launch" in sys.argv:
             preflight(run)
+            stage = "launch"
             # launch.py owns the one-shot reservation and process timeout.
             done = subprocess.run(
                 [sys.executable, "-B", str(run / "launch.py")], capture_output=True, text=True
             )
             if done.returncode:
+                # Never discard a primary provider failure because the wrapper failed.
+                native_outcome(run, json.loads((run / "manifest.json").read_text()))
                 raise ValueError("LAUNCH_FAILED_NO_RETRY")
+        stage = "collect"
         packet = collect(run)
         from backlog import capture
 
@@ -291,7 +460,28 @@ def main():
         if packet["status"] != "READY_FOR_LEAD_REVIEW":
             return 2
     except Exception as exc:
-        error = dict(status="BLOCKED", reason=str(exc), error_type=type(exc).__name__)
+        error = dict(
+            status="BLOCKED",
+            reason=str(exc),
+            error_type=type(exc).__name__,
+            stage=stage,
+            primary="local_failure",
+            secondary=[],
+            readiness="NOT_READY",
+            automatic_retry=False,
+            requested_model=None,
+            observed_model=None,
+            accepted_model=None,
+            usage=None,
+        )
+        if isinstance(exc, DeliveryFailure):
+            error.update(
+                stage=exc.stage,
+                primary=exc.primary,
+                secondary=exc.secondary,
+                evidence=exc.evidence,
+                requested_model=exc.evidence["requested_model"],
+            )
         (run / "packet-error.json").write_text(json.dumps(error, indent=2))
         from backlog import capture
 
