@@ -4,6 +4,13 @@ Status: **PAUSED_OWNER_DIRECTED**. Complete delivery-route qualification remains
 **NOT_QUALIFIED**. This is a preservation checkpoint, not a new release or a
 successful full-route experiment. No automatic continuation is authorized.
 
+## Why paused
+
+- The owner reports improved quality and lower usage since Sol 6.1 became available.
+- Coordinating the work directly inside Codex is simpler for the owner.
+
+These are practical owner observations; no new comparative measurement was run.
+
 ## Preserved implementation
 
 The existing plugin supports declared repository/file/check contracts, a separate

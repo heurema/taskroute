@@ -1,4 +1,5 @@
 > **PAUSED — October 1, 2026.** Development experiments are on hold. Full-route qualification remains **NOT_QUALIFIED**. No automatic or paid runs are authorized. See the [checkpoint, checks, limitations and resume steps](docs/PAUSE.md).
+> The owner reports improved quality and lower usage with Sol 6.1, plus simpler coordination directly inside Codex.
 
 ![TaskRoute — Delegate the work. Keep the verdict.](plugins/taskroute/assets/flow.svg)
 
