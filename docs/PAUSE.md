@@ -95,9 +95,11 @@ by this preservation cycle. Existing local evidence is preserved but not publish
 
 1. Obtain an explicit owner resume with a bounded outcome and authority. Read this
    checkpoint and current local PLAN/HANDOFF; older next actions are suspended.
-2. Keep this code snapshot separate from published version 0.2.2. It is saved on
-   `codex/pause-checkpoint-2026-10-01`; release digests/tags were not refreshed.
-   Do not install it as a qualified release or move the default distribution branch
+2. The owner directed merging the saved checkpoint into `main`. This remains an
+   unreleased pause snapshot, separate from the previously verified version 0.2.2.
+   The manifest version and historical release digests/tags were not refreshed;
+   strict release-digest verification of this changed source will not pass.
+   Do not install it as a qualified release or update existing installed copies
    without a separate release decision and the required checks.
 3. Before any separately authorized real invocation, establish the required local
    sandbox/dependency/DB/browser execution paths and freeze one approved task's
@@ -117,7 +119,9 @@ authentication change or background experiment is scheduled.
 
 ## Publication and rollback
 
-Publish only the safe checkpoint, current plugin diff, tests and ignore rules to
-the existing repository branch. Do not force-push or rewrite release tags. Read back
-that branch's SHA and compare it with the saved local commit. A later rollback is a
-reviewed revert on this branch; the published default branch/release stays intact.
+The safe checkpoint, plugin diff, tests and ignore rules were saved on
+`codex/pause-checkpoint-2026-10-01`. The owner subsequently directed merging this
+snapshot into `main` so the pause notice is visible on the default branch. Use a
+normal fast-forward and explicit push to `main`, without force-push, private refs
+or release-tag changes. Read back `main` and compare its SHA with the local commit.
+A later rollback is a reviewed revert; existing release tags remain unchanged.
