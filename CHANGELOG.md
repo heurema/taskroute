@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.0 — 2026-10-06
+
+- Add coordinator-recorded native stage routing, a single bounded Claude process,
+  independent acceptance and explicit partial usage observations.
+- Add one native Sol6.1 fallback after confirmed Claude unavailability and resolved
+  primary effects; retain failed-primary cost and stop on unknown submission.
+- Document coordinator-owned decisions and scoped plugin updates.
+
+- Snapshot existing native frontend dependencies for fresh isolated check copies,
+  pin runtime executables, scope disposable caches and explicit local ports, and
+  provide a Vite/Tailwind/Vitest/browser example. Browser qualification pending.
+- Capture sanitized preparation/preflight failures before a run manifest exists,
+  with immutable local evidence and exact/concurrent replay deduplication.
+- Preserve reviewer baseline/diff evidence and SQLite readiness before effects;
+  align worker prompts with explicit acceptance-check budgets.
+- Package the requested native Codex worker/reviewer route and selected correction
+  feedback intake; the separate CLI route remains live-blocked at missing identity.
+- Preserve live qualification and savings as unproven; packaging and installation
+  do not promote offline fixtures to live delivery evidence.
+
 ## 0.2.2 — 2026-09-29
 
 - Preserve UTF-8 source bytes including CRLF, LF and mixed line endings during

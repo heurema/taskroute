@@ -1,0 +1,105 @@
+{
+  "mode": "repository",
+  "contract": "Verify the local frontend build and refresh continuity without changing source bytes.",
+  "acceptance": [
+    {
+      "id": "AC1",
+      "text": "The existing frontend unit test passes.",
+      "evidence": [
+        "check:frontend-test"
+      ]
+    },
+    {
+      "id": "AC2",
+      "text": "Vite builds the Tailwind frontend with existing native dependencies.",
+      "evidence": [
+        "check:frontend-build"
+      ]
+    },
+    {
+      "id": "AC3",
+      "text": "A real browser preserves selection, focus and scroll after refresh.",
+      "evidence": [
+        "check:browser"
+      ]
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "NG1",
+      "text": "Preserve source bytes; no install, external network or personal browser profile access."
+    }
+  ],
+  "files": [
+    "package.json",
+    "main.js",
+    "index.html",
+    "style.css",
+    "vite.config.mjs",
+    "view.test.js",
+    "check-browser.mjs",
+    "view.js"
+  ],
+  "writable_paths": [
+    "view.js"
+  ],
+  "check_inputs": [
+    "package.json",
+    "main.js",
+    "index.html",
+    "style.css",
+    "vite.config.mjs",
+    "view.test.js",
+    "check-browser.mjs"
+  ],
+  "checks": [
+    {
+      "name": "frontend-test",
+      "argv": [
+        "npm",
+        "test"
+      ],
+      "timeout_seconds": 20
+    },
+    {
+      "name": "frontend-build",
+      "argv": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "timeout_seconds": 30
+    },
+    {
+      "name": "browser",
+      "argv": [
+        "node",
+        "check-browser.mjs",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "5198"
+      ],
+      "timeout_seconds": 45
+    }
+  ],
+  "check_environment": {
+    "dependency_roots": [
+      "node_modules"
+    ],
+    "executables": [
+      "/opt/homebrew/bin/node",
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    ],
+    "loopback_ports": [
+      5198
+    ],
+    "cache_paths": [
+      "node_modules/.vite",
+      "node_modules/.vite-temp"
+    ]
+  },
+  "permissions": {
+    "network": false,
+    "install": false
+  },
+  "model": "claude-opus-5-5"
+}

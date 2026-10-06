@@ -31,6 +31,22 @@ def decide(event):
         if not path.is_absolute():
             path = WORK / path
         resolved = path.resolve()
+        if child and tool == "Read" and M.get("review_evidence_required"):
+            from repository_task import snapshot, validate_scope_evidence
+
+            checks = (
+                json.loads((WORK / "checks.json").read_text())
+                if (WORK / "checks.json").exists()
+                else {}
+            )
+            if str(path) == checks.get("review_evidence_path"):
+                if any(p.is_symlink() for p in [path, *path.parents]):
+                    return False, "Review evidence symlink"
+                originals = json.loads((ROOT / "originals.json").read_text())
+                evidence = validate_scope_evidence(
+                    ROOT, M, originals, snapshot(M, originals), checks
+                )
+                return resolved == evidence, "Read exact host-bound scope evidence only"
         if not resolved.is_relative_to(WORK) or any(p.is_symlink() for p in [path, *path.parents]):
             return False, "Path outside owned copy or symlink"
         relative = str(resolved.relative_to(WORK))
@@ -65,6 +81,9 @@ def decide(event):
                 n: digest(b) for n, b in bodies.items()
             }:
                 return False, "Review requires passing checks for this candidate"
+            from repository_task import validate_scope_evidence
+
+            validate_scope_evidence(ROOT, M, originals, bodies, receipt)
         return (
             not child
             and args.get("subagent_type") == "reviewer"

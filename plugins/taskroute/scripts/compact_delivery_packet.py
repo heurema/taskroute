@@ -11,7 +11,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from runtime import Journal, bounded_check, unittest_script
+from runtime import Journal, bounded_check, readiness_script, unittest_script
 from verify_structured_flow import outside, read_stats
 
 TOKEN = re.compile(r"[a-z0-9_]{1,64}")
@@ -114,8 +114,15 @@ def native_outcome(run, m):
 def launch_environment(run, m):
     """Probe current permissions; never grant access or run project test code."""
     environment = m.get("check_environment", {})
-    if environment not in ({}, None):
-        raise ValueError("UNSUPPORTED_CHECK_ENVIRONMENT: no additional roots or network")
+    if environment:
+        from check_environment import policy_options, verify
+        from runtime import check_policy
+
+        verify(m)
+        if (run / "test.sb").read_text() != check_policy(
+            Path(m["workspace"]), run / "scratch", **policy_options(m)
+        ):
+            raise ValueError("CHECK_POLICY_CHANGED")
     workspace = Path(m["workspace"])
     if not workspace.is_dir():
         raise ValueError("WORKSPACE_UNAVAILABLE")
@@ -160,13 +167,7 @@ def launch_environment(run, m):
     # This probes declared inputs only; arbitrary transitive dependencies are unknown.
     inputs = [str(workspace / name) for name in m["source_hashes"]]
     inputs.extend(check["argv"][0] for check in m.get("checks", []))
-    script = (
-        "import pathlib, unittest; "
-        + "[pathlib.Path(p).open('rb').close() for p in "
-        + repr(inputs)
-        + "]; "
-        + "pathlib.Path('probe').write_bytes(b'preflight')"
-    )
+    script = readiness_script(inputs)
     with tempfile.TemporaryDirectory(dir=scratch) as directory:
         result = bounded_check(
             [str(sandbox), "-f", str(run / "test.sb"), m["python"], "-B", "-c", script],

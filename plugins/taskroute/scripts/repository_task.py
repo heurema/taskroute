@@ -1,13 +1,15 @@
 """Language-neutral file contracts and bounded project checks for trusted code."""
 
+import contextlib
 import difflib
 import hashlib
 import json
 import os
 import shutil
+import tempfile
 from pathlib import Path
 
-from runtime import Journal, bounded_check
+from runtime import Journal, bounded_check, check_policy
 from task_contract import assess, task_text, validate_contract
 
 RESERVED = {"TASK.md", "checks.json", ".git"}
@@ -49,7 +51,7 @@ def validate(spec, project):
         "non_goals",
         "check_inputs",
     }
-    if set(spec) != required:
+    if not required <= set(spec) or not set(spec) <= required | {"check_environment"}:
         raise ValueError("INVALID_REPOSITORY_FIELDS")
     for field in ("contract", "model"):
         if not isinstance(spec[field], str) or not spec[field].strip():
@@ -106,10 +108,20 @@ def validate(spec, project):
     if len({c["name"] for c in normalized}) != len(normalized):
         raise ValueError("DUPLICATE_CHECK_NAME")
     validate_contract(spec)
+    if "check_environment" in spec:
+        from check_environment import validate as validate_environment
+
+        spec = dict(
+            spec,
+            check_environment=validate_environment(spec["check_environment"], project, list(names)),
+        )
     return dict(spec, checks=normalized)
 
 
 def check_tools(m):
+    from check_environment import verify
+
+    verify(m)
     for check in m["checks"]:
         binary = Path(check["argv"][0])
         if (
@@ -149,6 +161,14 @@ def snapshot(m, originals):
 def execute(root, m, bodies, label):
     """Each check gets a fresh disposable copy; outputs are never applied."""
     check_tools(m)
+    from check_environment import (
+        environment_values,
+        executable_paths,
+        install_copy,
+        policy_options,
+        verify_copy,
+    )
+
     results = []
     for i, check in enumerate(m["checks"]):
         copy = root / "scratch" / f"{label}-{i}"
@@ -157,12 +177,37 @@ def execute(root, m, bodies, label):
             p = copy / name
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(body.encode("utf-8"))
-        proc = bounded_check(
-            ["/usr/bin/sandbox-exec", "-f", str(root / "test.sb"), *check["argv"]],
-            copy,
-            check["timeout_seconds"],
+        install_copy(root, m, copy)
+        local_browser = bool((m.get("check_environment") or {}).get("loopback_ports"))
+        temporary = (
+            tempfile.TemporaryDirectory(prefix="tr-", dir="/private/tmp")
+            if local_browser
+            else contextlib.nullcontext(None)
         )
+        with temporary as directory:
+            policy = root / "test.sb"
+            if directory:
+                # Short, owned paths avoid the macOS Unix socket path length limit.
+                policy = root / f"{label}-{i}.sb"
+                policy.write_text(
+                    check_policy(
+                        Path(m["workspace"]),
+                        root / "scratch",
+                        **policy_options(m),
+                        temporary_paths=[directory],
+                    )
+                )
+            policy_sha256 = hashlib.sha256(policy.read_bytes()).hexdigest()
+            proc = bounded_check(
+                ["/usr/bin/sandbox-exec", "-f", str(policy), *check["argv"]],
+                copy,
+                check["timeout_seconds"],
+                extra_paths=executable_paths(m),
+                cache_environment=environment_values(m, copy),
+                temporary_directory=directory,
+            )
         (root / f"{label}-{i}.log").write_text(proc["feedback"])
+        verify_copy(m, copy)
         for name, body in bodies.items():
             p = copy / name
             if p.is_symlink() or not p.is_file() or p.read_bytes() != body.encode("utf-8"):
@@ -173,6 +218,7 @@ def execute(root, m, bodies, label):
                 argv=check["argv"],
                 exit_code=proc["returncode"],
                 stop_reason=proc["stop_reason"],
+                policy_sha256=policy_sha256,
                 summary=proc["feedback"][-1800:],
             )
         )
@@ -180,6 +226,55 @@ def execute(root, m, bodies, label):
             raise ValueError(proc["stop_reason"])
     check_tools(m)
     return results
+
+
+def scope_evidence(m, originals, bodies, checks):
+    """Host-owned scope evidence, without copying unrelated baseline bodies."""
+    baseline = {n: digest(b) for n, b in originals.items()}
+    if baseline != m["source_hashes"]:
+        raise ValueError("REVIEW_BASELINE_CHANGED")
+    return dict(
+        baseline_hashes=baseline,
+        candidate_hashes={n: digest(b) for n, b in bodies.items()},
+        writable_originals={n: originals.get(n) for n in m["writable_paths"]},
+        changed_paths=sorted(n for n in bodies if bodies[n] != originals.get(n)),
+        diff="".join(
+            "".join(
+                difflib.unified_diff(
+                    originals.get(n, "").splitlines(True),
+                    bodies[n].splitlines(True),
+                    fromfile=n + " (original)",
+                    tofile=n,
+                )
+            )
+            for n in sorted(bodies)
+        ),
+        checks={k: checks[k] for k in ("status", "checks", "file_hashes")},
+    )
+
+
+def validate_scope_evidence(root, m, originals, bodies, checks):
+    if not m.get("review_evidence_required"):
+        return None
+    receipts = sorted(root.glob("check-receipt-*.json"))
+    if not receipts or json.loads(receipts[-1].read_text()) != checks:
+        raise ValueError("REVIEW_CHECK_RECEIPT_MISMATCH")
+    number = receipts[-1].stem.removeprefix("check-receipt-")
+    path = root / f"review-evidence-{number}.json"
+    if (
+        checks.get("status") != "PASS"
+        or checks.get("file_hashes") != {n: digest(b) for n, b in bodies.items()}
+        or checks.get("review_evidence_path") != str(path)
+        or path.is_symlink()
+        or not path.is_file()
+    ):
+        raise ValueError("REVIEW_EVIDENCE_UNAVAILABLE_OR_STALE")
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != checks.get("review_evidence_sha256") or json.loads(
+        raw
+    ) != scope_evidence(m, originals, bodies, checks):
+        raise ValueError("REVIEW_EVIDENCE_CHANGED")
+    return path
 
 
 def verify(root, m, originals):
@@ -224,6 +319,13 @@ def verify(root, m, originals):
             "number": observation["number"],
             "outcome": observation["outcome"],
         }
+    if result["status"] == "PASS" and m.get("review_evidence_required"):
+        evidence = root / f"review-evidence-{number}.json"
+        raw = json.dumps(scope_evidence(m, originals, bodies, result), indent=2).encode()
+        with evidence.open("xb") as stream:
+            stream.write(raw)
+        result["review_evidence_path"] = str(evidence)
+        result["review_evidence_sha256"] = hashlib.sha256(raw).hexdigest()
     reservation.write_text(json.dumps(result, indent=2))
     (Path(m["workspace"]) / "checks.json").write_text(json.dumps(result, indent=2))
     print(json.dumps(result))
@@ -243,6 +345,7 @@ def collect(root):
     receipts = sorted(root.glob("check-receipt-*.json"))
     if not receipts or json.loads(receipts[-1].read_text()) != checks:
         raise ValueError("CHECK_RECEIPT_MISMATCH")
+    validate_scope_evidence(root, m, originals, bodies, checks)
     from observer import receipts as observer_receipts
     from observer import require_clearance
 

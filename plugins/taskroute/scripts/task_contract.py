@@ -61,9 +61,11 @@ COORDINATOR_INSTRUCTION = """Finish with exactly one single-line TASKROUTE_RESUL
 Stop BLOCKED if review requests changes, evidence is missing, or the task needs
 undeclared files, commands or permissions. Do not weaken the contract or checks.
 Before coding, identify the important obligations and the declared evidence for each.
-After correcting a defect, rerun all frozen checks; fixing its motivating example
-alone is insufficient. Preserve original-input validity and meaning across transforms.
-The author repairs code; independent review assesses it and cannot waive violations."""
+Only corrections explicitly authorized by the task or selected mode may be made.
+Any authorized correction must be validated against all frozen checks within the
+remaining check-batch budget; a motivating example alone is insufficient. A batch
+ceiling grants no repair or retry authority. Preserve original-input validity and
+meaning across transforms. Independent review cannot repair or waive violations."""
 
 
 def _text(value):
@@ -117,6 +119,8 @@ def validate_contract(spec):
 
 def task_text(spec):
     fields = {k: spec[k] for k in ("acceptance", "non_goals", "check_inputs")}
+    if spec.get("check_environment"):
+        fields["check_environment"] = spec["check_environment"]
     return (
         spec["contract"]
         + "\n\nAcceptance contract (frozen):\n"

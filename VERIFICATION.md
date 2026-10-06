@@ -1,3 +1,18 @@
+# Version 0.3.0 verification
+
+229 deterministic offline plugin tests pass on macOS, including native-stage local
+subprocess execution, independent acceptance, partial usage snapshots, missing-CLI
+and resolved-quota native fallback, replay prevention and unknown-effect guards.
+Ruff lint/format and the skill validator pass. No new live provider or browser
+qualification was run; native fallback dispatch is exercised with synthetic tool
+records, not a paid model call. Full-route savings remain unproven.
+
+The fallback is one fresh Sol6.1 native child selected by the coordinator after
+confirmed Claude unavailability and resolved effects. A recorded tool selection is
+not backend-model evidence. Native tools must be available in the calling host;
+no CLI fallback is silently substituted. Updating the plugin requires a fresh chat
+to load the current instructions; existing conversations can retain older context.
+
 # Version 0.2.2 verification
 
 82 offline tests passed (11.819s), including exact LF/CRLF/mixed-ending preservation

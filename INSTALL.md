@@ -3,7 +3,7 @@
 Act on the user's install/update request; do not ask them to clone a repository or
 run commands. The canonical source is https://github.com/heurema/taskroute.
 The repository catalog is `.agents/plugins/marketplace.json`, named `taskroute`.
-The plugin identifier is `taskroute@taskroute`. Current release: **0.2.2**.
+The plugin identifier is `taskroute@taskroute`. Current release: **0.3.0**.
 
 ## Prerequisites and authority
 
@@ -56,7 +56,7 @@ or heartbeat to simulate it. The user can ask Codex to update at any time.
 For a fresh pinned catalog, run:
 
 ```sh
-codex plugin marketplace add heurema/taskroute --ref v0.2.2
+codex plugin marketplace add heurema/taskroute --ref v0.3.0
 codex plugin add taskroute@taskroute
 ```
 

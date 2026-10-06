@@ -24,6 +24,8 @@ class DeliveryTests(unittest.TestCase):
             "--run",
             "fresh-run",
             "--review-repair",
+            "--max-checks",
+            "2",
             "--project-id",
             "project-id",
             "--task-id",
@@ -47,6 +49,7 @@ class DeliveryTests(unittest.TestCase):
             observe=False,
             probes=False,
             review_repair=True,
+            max_checks=2,
             project_id="project-id",
             task_id="task-id",
         )

@@ -1,6 +1,46 @@
-# Paused experiment checkpoint — October 1, 2026
+# Scoped release resumed — October 6, 2026
 
-Status: **PAUSED_OWNER_DIRECTED**. Complete delivery-route qualification remains
+The owner explicitly authorized availability fallback, commit, push and local plugin
+update. Version0.3.0 packages the preserved offline changes and new native stage
+workflow. Live model/browser experiments remain separately unqualified; this release
+does not reset prior attempts or establish comparative savings.
+
+# Local development exception — October 6, 2026
+
+Owner requested implementation of the coordinated native stage workflow. One local
+implementation/check cycle is resumed; live model/browser trials, global installed
+updates and release remain paused. PLAN records the bounded scope. Historical
+attempt ceilings and UNKNOWN remote submission are unchanged.
+
+# Pause checkpoint — October 5, 2026
+
+Status: **PAUSED_OWNER_DIRECTED**. Benefit over direct native-agent work and
+full-route savings have not been demonstrated. Complete live delivery remains
+**NOT_QUALIFIED**. This records the owner's pause decision, not a finding that
+the preserved implementation is unusable.
+
+## Current reason and boundary
+
+The owner paused the experiment again because its practical advantage has not
+been established. Development, new live/model/browser experiments, publication
+and installed updates are on hold until an explicit owner resume with a bounded
+outcome. The earlier publication/update request is preserved but paused.
+
+Keep the prepared frontend support and failure capture, existing verification
+evidence and all four failed browser qualifications. Local package checks passed;
+build/unit success does not establish browser acceptance or comparative savings.
+The installed release remains 0.2.2. No reset, cleanup, new release or rollback is
+part of this pause. A previously started consultation does not authorize another
+call or automatic implementation.
+
+## Historical pause checkpoint — October 1, 2026
+
+Interim status on October 5, 2026: the owner briefly resumed scoped development
+and authorized a frontend/browser-support release and installed update. The
+current pause above supersedes that continuation. Complete live delivery remains
+**NOT_QUALIFIED**. The checkpoint below preserves the October 1 evidence.
+
+Historical status on October 1: **PAUSED_OWNER_DIRECTED**. Complete delivery-route qualification remains
 **NOT_QUALIFIED**. This is a preservation checkpoint, not a new release or a
 successful full-route experiment. No automatic continuation is authorized.
 

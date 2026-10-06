@@ -1,6 +1,9 @@
-> **Project paused — October 1, 2026.** Full-route qualification remains **NOT_QUALIFIED**. See the [pause checkpoint](../../docs/PAUSE.md) before resuming.
+> **Version 0.3.0 — October 6, 2026.** Native stage routing, independent acceptance,
+> usage observations and one Claude-to-Sol availability fallback are packaged.
+> Offline checks pass; live qualification and full-route savings remain unproven.
+> See [native stage](docs/native-stage.md).
 
-# TaskRoute 0.2.2
+# TaskRoute 0.3.0
 
 A local Codex plugin for bounded Claude Code delivery: change declared project files,
 run declared checks, get a separate read-only review, then return a compact evidence packet
@@ -17,8 +20,12 @@ phase-appropriate reasoning. Proposed model combinations remain unqualified hypo
   `claude-opus-5-5`, medium. Other CLI versions/models are not qualified by this release.
 - Repository mode: declared UTF-8 input and writable files, with frozen check commands.
   No language allowlist, function boundary, or required directory layout. Existing
-  files can change and new files can be created; deletion and binary files are not
-  supported yet. Dependencies must already be usable in the isolated copy.
+  files can change and new files can be created; deletion and binary candidate files
+  are not supported. Existing local dependency trees, including native binaries,
+  can be copied into each isolated check through optional `check_environment`.
+- Frontend checks: frozen dependencies, pinned runtime executables, disposable
+  caches and explicitly declared loopback ports. External network and installation
+  stay denied. See [frontend and browser checks](docs/frontend-checks.md).
 - Legacy Python-function mode: one existing function under `src/`, stdlib unittest
   checks under `tests/`; original behavior must fail the added worker tests.
 - One coordinator, one separate reviewer, at most three verification attempts,
@@ -56,8 +63,10 @@ python3 -B scripts/taskroute.py preflight /tmp/taskroute-example
 Preparation and preflight make no model calls. Use a fresh run directory each time.
 Preflight checks workspace write access, pinned test executables and a stdlib
 read/write probe inside the existing macOS test boundary before any provider call.
-Additional dependency roots or network exceptions are unsupported and rejected.
-Transitive dependencies and provider auth/availability remain unverified.
+Optional `check_environment` verifies declared local dependency trees and runtime
+executables; only frozen loopback ports can be opened. Undeclared capabilities,
+external network and installation are rejected. System runtime transitive dependencies
+and provider auth/availability remain unverified.
 A failed preparation records BLOCKED in preflight.json and packet-error.json.
 The direct generated launcher rechecks readiness before reserving a provider attempt.
 Failure receipts preserve the primary native reason and unknown identity/usage;
@@ -104,7 +113,9 @@ prepares the contract from the user's intent; users do not need to write JSON.
 The Go command is an example, not a required toolchain. Use the actual project's
 checks and existing tools. Acceptance may be tests, builds, linters or a scripted
 artifact check. The lead must judge whether these prove the requested outcome.
-No automatic visual/browser acceptance or arbitrary application delivery is claimed.
+A declared browser script can establish a specific DOM behavior in an existing
+browser. Visual quality, arbitrary application delivery and model competence still
+need their own evidence.
 
 - `acceptance`: nonempty list of unique IDs, concrete criteria and required evidence
   references. References are `check:<declared name>`, `file:<declared path>`, or

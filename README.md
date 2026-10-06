@@ -1,5 +1,7 @@
-> **PAUSED — October 1, 2026.** Development experiments are on hold. Full-route qualification remains **NOT_QUALIFIED**. No automatic or paid runs are authorized. See the [checkpoint, checks, limitations and resume steps](docs/PAUSE.md).
-> The owner reports improved quality and lower usage with Sol 6.1, plus simpler coordination directly inside Codex.
+> **Version 0.3.0 — October 6, 2026.** Native stage routing, independent acceptance,
+> usage observations and one Claude-to-Sol availability fallback are packaged.
+> Offline checks pass; live qualification and full-route savings remain unproven.
+> See [native stage](plugins/taskroute/docs/native-stage.md).
 
 ![TaskRoute — Delegate the work. Keep the verdict.](plugins/taskroute/assets/flow.svg)
 
@@ -21,7 +23,9 @@ TaskRoute is a local **Codex plugin** that keeps this handoff in one workflow.
 - **A bounded correction path** when a concrete defect is found.
 - **A local failure backlog** for later triage, without automatic fixes.
 
-Your original files stay unchanged until you decide to apply the result.
+The released strict runner keeps original files unchanged until you apply the result.
+The new local native-stage path works in the supplied project and requires a preserved
+baseline; it is not an isolated copy.
 
 <details>
 <summary>See the flow in 13 seconds</summary>
@@ -67,8 +71,8 @@ See [everyday usage and the new 0.2.0 features](USAGE.md) for corrections, recei
 and the failure backlog.
 
 The aim is to spend less Codex effort coordinating implementation and reviewing
-logs. Early examples show promising reductions in execution tokens; overall
-savings depend on the task and preparation. [See the measurements](VERIFICATION.md).
+logs. Overall benefit and savings have not been established; existing measurements
+cover finite scenarios. [See the measurements](VERIFICATION.md).
 
 **Version 0.2.2:** repository tasks use declared files and project checks, without
 a language restriction. Requires macOS, Python 3.11+ and an existing Claude Code

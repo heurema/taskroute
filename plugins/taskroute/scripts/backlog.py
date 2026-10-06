@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sqlite3
+import tempfile
 import time
 from pathlib import Path
 
@@ -138,6 +139,90 @@ def show(path, issue_key):
         ]
     finally:
         db.close()
+
+
+def preparation_code(error):
+    """Keep exception text and source bytes out of the shared registry."""
+    if isinstance(error, UnicodeDecodeError):
+        return "NON_UTF8_INPUT"
+    if isinstance(error, json.JSONDecodeError):
+        return "INVALID_JSON"
+    if isinstance(error, FileNotFoundError):
+        return "INPUT_NOT_FOUND"
+    if isinstance(error, PermissionError):
+        return "LOCAL_ACCESS_DENIED"
+    if isinstance(error, OSError):
+        return "LOCAL_IO_ERROR"
+    if isinstance(error, ValueError):
+        match = re.match(r"[A-Z][A-Z_]{2,79}(?=:|$)", str(error))
+        return match.group() if match else "INVALID_INPUT"
+    return "PREPARATION_EXCEPTION"
+
+
+def capture_preparation(
+    project, destination, error, *, stage="preparation", project_id=None, task_id=None, path=None
+):
+    """Capture a local blocker without a manifest or writes to the requested run."""
+    receipt = {"status": "NOT_SAVED"}
+    try:
+        if stage not in {"preparation", "preflight"}:
+            raise ValueError("INVALID_PREPARATION_STAGE")
+        db_path = Path(path) if path is not None else database()
+        code = preparation_code(error)
+        valid_project = isinstance(project_id, str) and TOKEN.fullmatch(project_id)
+        valid_task = isinstance(task_id, str) and TOKEN.fullmatch(task_id)
+        item = dict(
+            issue_key=stage + "." + code.lower(),
+            project_id=project_id
+            if valid_project
+            else (opaque(Path(project).resolve()) if project is not None else "unknown"),
+            task_id=task_id if valid_task else None,
+            run_id=opaque(Path(destination).resolve()),
+            event_id="blocked",
+            stage=stage,
+            severity="medium",
+            expected="prepared-delivery" if stage == "preparation" else "executor-ready",
+            observed=code,
+            version="0.2.2",
+        )
+        event_key = opaque(
+            json.dumps([item[k] for k in ("project_id", "run_id", "stage", "event_id")])
+        )
+        item["evidence"] = f"preparation-{event_key}.json"
+        folder = Path(str(db_path) + ".evidence")
+        if folder.is_symlink():
+            raise ValueError("PREPARATION_EVIDENCE_UNSAFE")
+        folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+        target = folder / item["evidence"]
+        payload = dict(
+            occurrence=item,
+            error_type=type(error).__name__,
+            model_calls=0,
+            automatic_retry=False,
+            meaning="Local preparation observation; not a model run or repair authority",
+        )
+        body = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode()
+        # Publish complete, private evidence once; conflicting replays cannot overwrite it.
+        fd, temporary = tempfile.mkstemp(prefix=".preparation-", dir=folder)
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(body)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(temporary, target)
+            except FileExistsError as exc:
+                if target.is_symlink() or target.read_bytes() != body:
+                    raise ValueError("PREPARATION_EVENT_CONFLICT") from exc
+        finally:
+            Path(temporary).unlink()
+        receipt["evidence"] = str(target)
+        receipt["evidence_sha256"] = hashlib.sha256(body).hexdigest()
+        saved = record(db_path, item)
+        receipt.update(status="SAVED", events=[saved])
+    except Exception as exc:
+        receipt.update(status="NOT_SAVED", error_type=type(exc).__name__)
+    return receipt
 
 
 def capture(run, packet, path=None):

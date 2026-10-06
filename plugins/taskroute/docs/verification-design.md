@@ -140,3 +140,48 @@ Sources informing the hypotheses (reviewed September 29, 2026):
 These are vendor guidance and selected experiments, not local qualification. Recheck
 time-sensitive API/CLI claims. Prompting principles cannot guarantee compliance or
 semantic correctness; explicit runtime limits and actual acceptance evidence remain.
+
+## Repository review scope evidence (2026-10-05)
+
+New Claude repository runs require host-generated `review-evidence-N.json` after
+each passing verifier batch. It includes byte-preserving originals of writable
+inputs (null for additions), scoped unified diff, baseline/candidate hashes for
+all declared inputs and the check result. Unchanged baseline bodies are not copied.
+The artifact stays outside the candidate workspace and is created exclusively;
+later check rounds create a new artifact rather than overwrite the old one.
+
+Only the reviewer may Read the exact path bound by current `checks.json` and the
+host check receipt. Author/reviewer writes and other run-root reads remain denied.
+Read and launch gates and final collection recompute the evidence from the frozen
+baseline and current candidate, checking its hash/content, current passing receipt
+and symlink boundary. Stale, missing or changed evidence fails closed. This is
+logical immutability through scoped tools and tamper detection, not OS-wide
+read-only containment or semantic approval. Legacy runs without the manifest flag
+retain their original protocol and are not retroactively upgraded or replayed.
+
+Reviewer tools, model inheritance, turn ceilings and final semantic lead acceptance
+remain unchanged. Passing offline access/integrity checks is not a live reviewer
+acceptance or permission to start a new pilot.
+
+## Check budgets and evidence stages (2026-10-05)
+
+Claude prepare/deliver accepts `--max-checks 1`, `--max-checks 2` or `--max-checks 3`.
+The existing default remains3; the explicit lower ceiling is fixed in manifest
+before rendering prompt.txt. This is execution metadata, not parsing of owner
+prose or new repair authority. Review-repair requires at least two check batches;
+the existing Sol/Astra CLI route rejects this unsupported budget override.
+
+Initial reads cover TASK.md and existing declared inputs. For requested changes,
+implement before the acceptance batch; no-change tasks may check without fake edits.
+Read generated checks/review evidence only after the appropriate passing stage;
+optional writable files are readable only after creation. An acceptance batch runs
+all frozen checks, not one provider submission. Single-check FAIL ends that task's
+check budget. General instructions permit only explicitly authorized corrections
+within the remaining budget, preserving selected multi-check modes.
+
+Observer-only STOP occurs before check reservation and does not consume an
+acceptance batch or create checks.json; its existing separate correction/call
+ceiling remains unchanged. Reviewer tools and runtime permission gates are unchanged.
+Old prepared runs are never regenerated or replayed by this source correction.
+Offline examples establish prompt/runtime consistency, not model obedience or
+successful live reviewer access.
