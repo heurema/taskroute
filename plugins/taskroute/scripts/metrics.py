@@ -1,11 +1,12 @@
 """Collect local historical counters. Metadata only, no model calls or message copies."""
 
 import argparse
+import csv
 import hashlib
 import html
 import json
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -262,6 +263,230 @@ def collect(files, start, end, zone="Europe/Moscow"):
     )
 
 
+METRICS = ("responses", "uncached_input", "cache_read", "cache_write", "output")
+
+
+def analytics(records):
+    """Describe observed workload; never infer price or accepted task identity."""
+    dimensions = {
+        "providers": ("provider",),
+        "sessions": ("provider", "session_id"),
+        "projects": ("provider", "project"),
+        "models": ("provider", "model"),
+        "days": ("provider", "day"),
+    }
+    result = {}
+    for name, fields in dimensions.items():
+        groups = {}
+        for record in records:
+            key = tuple(record[f] for f in fields)
+            row = groups.setdefault(
+                key,
+                dict(
+                    zip(fields, key, strict=True),
+                    **{
+                        "responses": 0,
+                        "uncached_input": 0,
+                        "cache_read": 0,
+                        "cache_write": 0,
+                        "output": 0,
+                        "session_ids": set(),
+                        "projects": set(),
+                        "models": set(),
+                    },
+                ),
+            )
+            u = record["usage"]
+            codex = record["provider"] == "codex"
+            cached = u["cached_input_tokens" if codex else "cache_read_input_tokens"]
+            row["responses"] += 1
+            row["uncached_input"] += u["input_tokens"] - cached if codex else u["input_tokens"]
+            row["cache_read"] += cached
+            row["cache_write"] += u[
+                "cache_write_input_tokens" if codex else "cache_creation_input_tokens"
+            ]
+            row["output"] += u["output_tokens"]
+            row["session_ids"].add(record["session_id"])
+            row["projects"].add(record["project"])
+            row["models"].add(record["model"])
+        rows = []
+        for key in sorted(groups):
+            row = groups[key]
+            row["sessions"] = len(row.pop("session_ids"))
+            row["projects"] = sorted(row["projects"])
+            row["models"] = sorted(row["models"])
+            row["mean_uncached_input_per_response"] = round(
+                row["uncached_input"] / row["responses"], 2
+            )
+            rows.append(row)
+        result[name] = rows
+    return result
+
+
+def account_history(path, start, end):
+    """Import an explicit account/usage/read receipt, without network or credentials."""
+    raw = path.read_bytes()
+    receipt = json.loads(raw)
+    if receipt.get("method") != "account/usage/read" or receipt.get("params") != {}:
+        raise ValueError("ACCOUNT_LEVEL_USAGE_RECEIPT_REQUIRED")
+    observed = timestamp(receipt["observed_at"])
+    if observed.tzinfo is None:
+        raise ValueError("ACCOUNT_OBSERVATION_OFFSET_REQUIRED")
+    body = receipt["response"]["result"]
+    buckets = body.get("dailyUsageBuckets")
+    if buckets is not None and not isinstance(buckets, list):
+        raise ValueError("INVALID_ACCOUNT_BUCKETS")
+    days = {}
+    for bucket in buckets or []:
+        day, tokens = bucket["startDate"], bucket["tokens"]
+        if date.fromisoformat(day).isoformat() != day or type(tokens) is not int or tokens < 0:
+            raise ValueError("INVALID_ACCOUNT_DAY")
+        if day in days:
+            raise ValueError("DUPLICATE_ACCOUNT_DAY")
+        days[day] = tokens
+    # Date labels only: the service does not attest the bucket timezone.
+    selected = [
+        dict(day=d, tokens=n)
+        for d, n in sorted(days.items())
+        if start.date().isoformat() <= d < end.date().isoformat()
+    ]
+    return dict(
+        status="AVAILABLE" if buckets is not None else "UNAVAILABLE",
+        observed_at=receipt["observed_at"],
+        source=str(path),
+        sha256=hashlib.sha256(raw).hexdigest(),
+        timezone="UNKNOWN",
+        selection="Start date inclusive, end date exclusive; date labels only, not timestamp reconciliation",
+        daily=selected,
+        freshness="UNKNOWN",
+        per_thread_cost="UNKNOWN",
+    )
+
+
+def export_analytics(result, directory):
+    for name, rows in result["analytics"].items():
+        if not rows:
+            continue
+        with (directory / (name + ".csv")).open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+            writer.writeheader()
+            for row in rows:
+                safe = {}
+                for key, value in row.items():
+                    if isinstance(value, list):
+                        value = json.dumps(value, ensure_ascii=False)
+                    # Do not let source labels become spreadsheet formulas.
+                    if isinstance(value, str) and value.startswith(
+                        ("=", "+", "-", "@", "\t", "\r", "\n")
+                    ):
+                        value = "'" + value
+                    safe[key] = value
+                writer.writerow(safe)
+
+
+def render_analytics(result, table):
+    data = result.get("analytics") or analytics(result["response_records"])
+    out = "<h2>Workload overview</h2><p>Observed token volumes, not monetary cost or subscription debits. Rankings stay within each provider.</p>"
+    out += table(
+        [
+            "Provider",
+            "Sessions",
+            "Responses",
+            "Uncached input",
+            "Cache read",
+            "Cache write",
+            "Output",
+        ],
+        [
+            (r["provider"], r["sessions"], *(format(r[k], ",") for k in METRICS))
+            for r in data["providers"]
+        ],
+    )
+    for provider in ("codex", "claude"):
+        out += "<h2>" + provider.title() + " workload hotspots</h2>"
+        for dimension, label in (
+            ("sessions", "session_id"),
+            ("projects", "project"),
+            ("models", "model"),
+        ):
+            rows = [r for r in data[dimension] if r["provider"] == provider]
+            if not rows:
+                out += "<p>No observed " + dimension + ". Coverage unknown.</p>"
+                continue
+            for metric in ("uncached_input", "output", "responses"):
+                ranked = sorted(rows, key=lambda r: (-r[metric], r[label]))[:10]
+                total = sum(r[metric] for r in rows)
+                out += (
+                    "<details"
+                    + (" open" if dimension == "projects" and metric == "uncached_input" else "")
+                    + "><summary>Top "
+                    + dimension
+                    + " by "
+                    + metric.replace("_", " ")
+                    + "</summary>"
+                )
+                out += (
+                    table(
+                        [
+                            "Name / ID",
+                            "Projects",
+                            "Models",
+                            "Responses",
+                            "Uncached input",
+                            "Cache read",
+                            "Cache write",
+                            "Output",
+                            "Share of selected metric",
+                        ],
+                        [
+                            (
+                                r[label],
+                                "; ".join(r["projects"]),
+                                "; ".join(r["models"]),
+                                *(format(r[k], ",") for k in METRICS),
+                                format(100 * r[metric] / total, ".1f") + "%" if total else "N/A",
+                            )
+                            for r in ranked
+                        ],
+                    )
+                    + "</details>"
+                )
+    out += "<h2>Daily local activity</h2>" + table(
+        [
+            "Provider",
+            "Day (Moscow)",
+            "Responses",
+            "Uncached input",
+            "Cache read",
+            "Cache write",
+            "Output",
+        ],
+        [(r["provider"], r["day"], *(format(r[k], ",") for k in METRICS)) for r in data["days"]],
+    )
+    account = result.get("account_history")
+    out += "<h2>Codex service history</h2>"
+    if account is None:
+        out += "<p>Not imported. Use --account-usage with an account/usage/read receipt.</p>"
+    else:
+        out += (
+            "<p>Status: "
+            + html.escape(account["status"])
+            + "; observed: "
+            + html.escape(account["observed_at"])
+            + ". Bucket timezone and freshness: UNKNOWN. Date-label selection only; never added to local totals or reconciled as billing.</p>"
+        )
+        out += table(
+            ["Service date label", "Account tokens"],
+            [(r["day"], format(r["tokens"], ",")) for r in account["daily"]],
+        )
+    out += (
+        "<p>Download complete tables: "
+        + " · ".join('<a href="' + n + '.csv">' + n + "</a>" for n, rows in data.items() if rows)
+        + "</p>"
+    )
+    return out
+
+
 def render(result):
     """Static local report. All source strings escaped; no scripts or external assets."""
 
@@ -326,7 +551,7 @@ def render(result):
     c = result["coverage"]
     return (
         """<!doctype html><html lang="en"><meta charset="utf-8"><title>TaskRoute metrics</title>
-<style>body{font:16px/1.55 system-ui;max-width:1100px;margin:40px auto;padding:0 20px;color:#20242a}table{border-collapse:collapse;width:100%;margin:20px 0}td,th{padding:8px;text-align:left;border-bottom:1px solid #ddd}h1{line-height:1.2}.note{background:#fff4db;padding:16px}</style>
+<style>body{font:16px/1.55 system-ui;max-width:1500px;margin:40px auto;padding:0 20px;color:#20242a}table{border-collapse:collapse;width:100%;margin:20px 0}td,th{padding:8px;text-align:left;border-bottom:1px solid #ddd}td{overflow-wrap:anywhere}details{margin:16px 0;overflow-x:auto}summary{cursor:pointer;font-weight:600}h1{line-height:1.2}.note{background:#fff4db;padding:16px}</style>
 <h1>TaskRoute local usage report</h1><p>"""
         + html.escape(result["period"]["start"])
         + " → "
@@ -338,6 +563,7 @@ def render(result):
         + " recorded responses. No subscription price inferred.</p>"
         + '<p class="note">Accepted task count: UNKNOWN. Causal savings: UNKNOWN. '
         + "Missing sessions and unpersisted calls are not zero. This is an explicit local snapshot, not a background monitor.</p>"
+        + render_analytics(result, table)
         + "<h2>Coverage</h2>"
         + table(["Observation", "Count"], sorted(c["issues"].items()))
         + "<p>Codex sessions with counters: "
@@ -395,6 +621,9 @@ def main(argv=None):
     )
     parser.add_argument("--start", required=True, help="Inclusive ISO timestamp with UTC offset")
     parser.add_argument("--end", required=True, help="Exclusive ISO timestamp with UTC offset")
+    parser.add_argument(
+        "--account-usage", type=Path, help="Import a saved account/usage/read receipt"
+    )
     parser.add_argument("--codex-root", type=Path, action="append")
     parser.add_argument("--claude-root", type=Path, action="append")
     parser.add_argument(
@@ -414,6 +643,7 @@ def main(argv=None):
         )
     ] + [("claude", p) for p in (args.claude_root or [Path.home() / ".claude/projects"])]
     files = json.loads(args.inventory.read_text()) if args.inventory else inventory(roots, start)
+    account = account_history(args.account_usage, start, end) if args.account_usage else None
     args.output_dir.mkdir(parents=True, exist_ok=False)
     (args.output_dir / "inventory.json").write_text(json.dumps(files, indent=2) + "\n")
     sources = (
@@ -426,6 +656,9 @@ def main(argv=None):
     )
     (args.output_dir / "sources.json").write_text(json.dumps(sources, indent=2) + "\n")
     result = collect(files, start, end)
+    result["analytics"] = analytics(result["response_records"])
+    result["account_history"] = account
+    export_analytics(result, args.output_dir)
     (args.output_dir / "report.json").write_text(json.dumps(result, indent=2) + "\n")
     (args.output_dir / "report.html").write_text(render(result))
     print(

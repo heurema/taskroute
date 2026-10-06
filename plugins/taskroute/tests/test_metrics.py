@@ -184,6 +184,84 @@ class WeeklyTests(unittest.TestCase):
         result = self.run_events()
         self.assertEqual(result["coverage"]["issues"]["malformed_relevant_records"], 2)
 
+    def test_rollups_preserve_provider_semantics_and_dimensions(self):
+        self.events += [self.request()]
+        records = self.run_events()["response_records"]
+        records.append(
+            dict(
+                provider="claude",
+                session_id="owned",
+                project="/project",
+                model="opus",
+                day="2026-09-29",
+                usage=dict(
+                    input_tokens=7,
+                    cache_read_input_tokens=90,
+                    cache_creation_input_tokens=20,
+                    output_tokens=4,
+                ),
+            )
+        )
+        data = w.analytics(records)
+        providers = {r["provider"]: r for r in data["providers"]}
+        self.assertEqual(providers["codex"]["uncached_input"], 50)
+        self.assertEqual(providers["codex"]["output"], 10)
+        self.assertEqual(providers["claude"]["uncached_input"], 7)
+        self.assertEqual(providers["claude"]["cache_write"], 20)
+        self.assertEqual(len(data["sessions"]), 2)
+        for rows in data.values():
+            for provider, total in providers.items():
+                for metric in w.METRICS:
+                    self.assertEqual(
+                        sum(r[metric] for r in rows if r["provider"] == provider), total[metric]
+                    )
+
+    def test_account_history_labels_missing_and_invalid_data(self):
+        path = Path(self.temp.name) / "account.json"
+        receipt = dict(
+            method="account/usage/read",
+            params={},
+            observed_at="2026-10-06T10:00:00Z",
+            response=dict(
+                result=dict(
+                    dailyUsageBuckets=[
+                        dict(startDate="2026-09-28", tokens=999),
+                        dict(startDate="2026-09-29", tokens=12),
+                        dict(startDate="2026-10-06", tokens=999),
+                    ]
+                )
+            ),
+        )
+        path.write_text(json.dumps(receipt))
+        result = w.account_history(path, self.start, self.end)
+        self.assertEqual(result["daily"], [dict(day="2026-09-29", tokens=12)])
+        self.assertEqual(result["timezone"], "UNKNOWN")
+        receipt["response"]["result"]["dailyUsageBuckets"] = None
+        path.write_text(json.dumps(receipt))
+        self.assertEqual(w.account_history(path, self.start, self.end)["status"], "UNAVAILABLE")
+        for buckets in (
+            [dict(startDate="2026-09-29", tokens=True)],
+            [dict(startDate="2026-09-29", tokens=-1)],
+            [dict(startDate="2026-09-29", tokens=1)] * 2,
+        ):
+            receipt["response"]["result"]["dailyUsageBuckets"] = buckets
+            path.write_text(json.dumps(receipt))
+            with self.assertRaises(ValueError):
+                w.account_history(path, self.start, self.end)
+
+    def test_csv_neutralizes_formula_labels(self):
+        import csv
+
+        self.events[0]["payload"]["cwd"] = "=1+1"
+        self.events += [self.request()]
+        result = self.run_events()
+        result["analytics"] = w.analytics(result["response_records"])
+        w.export_analytics(result, Path(self.temp.name))
+        with (Path(self.temp.name) / "projects.csv").open() as stream:
+            row = next(csv.DictReader(stream))
+        self.assertEqual(row["project"], "'=1+1")
+        self.assertEqual(row["uncached_input"], "50")
+
 
 if __name__ == "__main__":
     unittest.main()

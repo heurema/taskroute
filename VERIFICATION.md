@@ -1,3 +1,11 @@
+# Version 0.3.2 verification
+
+Fourteen deterministic metrics tests cover existing collection plus provider-aware
+rollup conservation, service receipt validation and CSV formula protection.
+The seven-day replay preserves all original report fields, with new analytics
+reported separately. Service bucket timezone and freshness remain unknown.
+No provider calls or new causal-savings claims are part of this release.
+
 # Version 0.3.1 verification
 
 The packaged collector passes11 deterministic metrics tests, including source CLI

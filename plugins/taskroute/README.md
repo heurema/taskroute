@@ -1,9 +1,9 @@
-> **Version 0.3.1 — October 6, 2026.** Local historical metrics collection is
-> included alongside native delivery and availability fallback. Collect counters
-> and quota observations without a model call; accepted work and causal savings
-> remain unknown. See [metrics collection](docs/metrics.md).
+> **Version 0.3.2 — October 6, 2026.** Usage reports now include provider-separated
+> chat, project and model rankings, daily activity, complete CSV exports and an
+> optional Codex service-history import. Token volumes do not establish subscription
+> charges or causal savings.
 
-# TaskRoute 0.3.1
+# TaskRoute 0.3.2
 
 A local Codex plugin for bounded Claude Code delivery: change declared project files,
 run declared checks, get a separate read-only review, then return a compact evidence packet

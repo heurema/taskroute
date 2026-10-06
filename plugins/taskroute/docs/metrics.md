@@ -30,7 +30,9 @@ The command saves:
 - `inventory.json`: input paths and frozen byte-prefix lengths;
 - `sources.json`: discovered roots or replay source;
 - `report.json`: response counters, grouped daily volumes, coverage gaps and quota snapshots;
-- `report.html`: a static readable summary with no external resources.
+- `report.html`: a static readable summary with no external resources;
+- `providers.csv`, `sessions.csv`, `projects.csv`, `models.csv`, `days.csv`: complete
+  workload tables (empty tables omitted). CSV source labels are formula-neutralized.
 
 Replay the original frozen file prefixes into another fresh output directory:
 
@@ -86,5 +88,32 @@ frozen prefixes, safe HTML and CLI output preservation. This proves importer beh
 not causal savings or complete billing coverage.
 
 No scheduled collection is enabled by installation. To return to the previous
-plugin, use the documented native pinned-catalog procedure with `v0.3.0`; preserve
+plugin, use the documented native pinned-catalog procedure with `v0.3.1`; preserve
 report directories. Never edit an installed cache manually.
+
+## Workload hotspots and service history
+
+The report ranks the top ten sessions, projects and models separately for each
+provider by uncached input, output and response count. Shares use the complete
+observed provider cohort, not just the top ten. Expand the desired ranking in HTML;
+CSV exports contain every row. Session IDs identify chats; they do not identify
+accepted tasks. A session can span multiple projects or configured models.
+
+Normalized tables retain uncached input, cache read, cache write and output as
+separate metrics. Mean uncached input per response is descriptive, not full context
+size. No token weights or dollar prices are assumed. High volume identifies where
+to investigate; it does not prove wasted work, polling, quality or causal savings.
+
+Optionally add `--account-usage /path/to/account.json` to import a previously saved
+Codex `account/usage/read` receipt. The JSON must contain `observed_at` (with offset),
+`method`, empty `params`, and `response.result.dailyUsageBuckets` with `startDate`
+and nonnegative integer `tokens`. Null buckets mean unavailable. Duplicate dates
+are rejected. Only date labels from the start date inclusive to the end date
+exclusive are selected; partial-day periods cannot be aligned to these buckets.
+The report stores the snapshot hash and observation timestamp, not credentials.
+
+Service history is a separate section. Its timezone, reporting lag and parity with
+the website are not established. Never add it to local totals, subtract the two as
+missing usage, or turn it into per-chat subscription charges. This import is offline;
+it does not fetch or refresh an account. Claude personal server history and exact
+subscription attribution remain unavailable. No stale stats-cache is imported.

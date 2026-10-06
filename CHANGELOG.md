@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.2 — 2026-10-06
+
+- Add provider-separated session, project, model and daily workload tables, with
+  rankings by uncached input, output and response count, plus full CSV exports.
+- Import saved Codex account usage receipts without network calls; preserve
+  unknown timezone and freshness and keep service totals separate from local data.
+- Verify historical counter preservation, aggregation conservation, receipt
+  validation and spreadsheet formula protection.
+
 ## 0.3.1 — 2026-10-06
 
 - Package local historical usage collection with source discovery, frozen-prefix
