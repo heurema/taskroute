@@ -1,3 +1,13 @@
+# Version 0.3.1 verification
+
+The packaged collector passes11 deterministic metrics tests, including source CLI
+execution, duplicate/conflicting records, foreign-thread history, date boundaries,
+partial records, Claude progressive usage, frozen prefixes, HTML escaping and
+existing-report preservation. Replaying a frozen local seven-day inventory produces
+byte-identical JSON to the previously verified pilot. No model calls are involved.
+The full plugin suite contains240 tests. Historical observations remain partial;
+accepted task counts and causal savings are not inferred from counters.
+
 # Version 0.3.0 verification
 
 229 deterministic offline plugin tests pass on macOS, including native-stage local

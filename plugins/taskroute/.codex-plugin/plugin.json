@@ -1,6 +1,6 @@
 {
   "name": "taskroute",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Coordinate bounded native stages with availability fallback, independent acceptance and usage evidence.",
   "skills": "./skills/",
   "license": "MIT",

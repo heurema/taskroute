@@ -1,9 +1,9 @@
-> **Version 0.3.0 — October 6, 2026.** Native stage routing, independent acceptance,
-> usage observations and one Claude-to-Sol availability fallback are packaged.
-> Offline checks pass; live qualification and full-route savings remain unproven.
-> See [native stage](docs/native-stage.md).
+> **Version 0.3.1 — October 6, 2026.** Local historical metrics collection is
+> included alongside native delivery and availability fallback. Collect counters
+> and quota observations without a model call; accepted work and causal savings
+> remain unknown. See [metrics collection](docs/metrics.md).
 
-# TaskRoute 0.3.0
+# TaskRoute 0.3.1
 
 A local Codex plugin for bounded Claude Code delivery: change declared project files,
 run declared checks, get a separate read-only review, then return a compact evidence packet

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1 — 2026-10-06
+
+- Package local historical usage collection with source discovery, frozen-prefix
+  replay, response deduplication and explicit missing coverage.
+- Add `metrics` CLI, JSON and static HTML reports, separate quota reset dates,
+  and safe existing-output preservation. No model calls or scheduled service.
+- Keep task acceptance, subscription charges and causal savings unknown when
+  source evidence cannot establish them.
+
 ## 0.3.0 — 2026-10-06
 
 - Add coordinator-recorded native stage routing, a single bounded Claude process,

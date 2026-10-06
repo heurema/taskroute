@@ -3,7 +3,7 @@
 Act on the user's install/update request; do not ask them to clone a repository or
 run commands. The canonical source is https://github.com/heurema/taskroute.
 The repository catalog is `.agents/plugins/marketplace.json`, named `taskroute`.
-The plugin identifier is `taskroute@taskroute`. Current release: **0.3.0**.
+The plugin identifier is `taskroute@taskroute`. Current release: **0.3.1**.
 
 ## Prerequisites and authority
 
@@ -11,7 +11,8 @@ Check macOS, Python 3.11+, `sandbox-exec`, Codex with native `plugin marketplace
 commands, and an existing authenticated Claude Code installation. No Python runtime
 packages are required. Missing tools, login or account changes need separate
 permission; report the missing prerequisite without installing or authenticating.
-Plugin installation does not authorize a live model task.
+Plugin installation does not authorize a live model task. Local metrics collection
+only needs Python and readable local logs; it does not require Claude login or execution.
 
 Inspect `codex plugin marketplace list --json` and `codex plugin list --json`
 first. Preserve unrelated sources and settings. If `taskroute` already resolves to
@@ -56,7 +57,7 @@ or heartbeat to simulate it. The user can ask Codex to update at any time.
 For a fresh pinned catalog, run:
 
 ```sh
-codex plugin marketplace add heurema/taskroute --ref v0.3.0
+codex plugin marketplace add heurema/taskroute --ref v0.3.1
 codex plugin add taskroute@taskroute
 ```
 

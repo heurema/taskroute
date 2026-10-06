@@ -399,12 +399,17 @@ def _prepare(
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "metrics":
+        from metrics import main as metrics_main
+
+        return metrics_main(sys.argv[2:])
     if len(sys.argv) > 1 and sys.argv[1] == "stage":
         from stage import main as stage_main
 
         return stage_main(sys.argv[2:])
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
+    sub.add_parser("metrics", help="Collect local historical counters and quota snapshots")
     sub.add_parser("stage", help="Native stage routing, execution, acceptance and accounting")
     for action in ("prepare", "deliver"):
         p = sub.add_parser(action)

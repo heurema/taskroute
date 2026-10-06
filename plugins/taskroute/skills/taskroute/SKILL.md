@@ -1,6 +1,6 @@
 ---
 name: taskroute
-description: Coordinate bounded repository delivery through Claude or requested Codex roles, with recorded routing, checks and acceptance; also capture selected completed corrections.
+description: Coordinate bounded repository delivery and collect local usage reports; use for Claude/Codex handoff, acceptance, historical metrics and selected corrections.
 ---
 
 # TaskRoute
@@ -16,6 +16,11 @@ The packaged stage path is offline-tested, not live-qualified. Reading it does n
 grant primary provider authority. For an already-authorized stage, confirmed Claude
 unavailability uses the one native Sol6.1 child fallback in that procedure; the lead
 handles the decision and records it. Unknown prior effects always stop.
+
+For historical usage, weekly metrics or a savings report, use
+[metrics collection](../../docs/metrics.md). It is a local read-only collector;
+run it directly without a worker or model monitor. Do not infer accepted work or
+subscription savings from counters. Installation does not schedule collection.
 
 Choose the requested route before loading its procedure:
 
